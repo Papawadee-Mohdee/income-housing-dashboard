@@ -1,32 +1,27 @@
-"""FastAPI application entry point.
+"""FastAPI application entry point (v2 design).
 
 Endpoints:
 - GET /                    -> Web UI (HTML)
 - GET /healthz             -> Health check
-- GET /api/meta            -> Filter metadata & as-of dates
-- GET /api/tab/{tab_id}    -> Tab 1, 2, or 3 data (kpis, ring, charts, summaries, tables)
-- GET /api/export/{tab}/{chart}.csv -> Export CSV with UTF-8 BOM
+- GET /api/meta            -> Filter metadata, as-of dates, and cpi_available
+- GET /api/tab/{tab_id}    -> Tab 1, 2, or 3 data (kpis, charts, status_line, notes)
 """
 from __future__ import annotations
 
-import csv
-import io
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import db
 from app.figures import tab1 as fig_tab1, tab2 as fig_tab2, tab3 as fig_tab3
 from app.filters import Filters
-from app.metrics import cagr_pct, format_number, pct_change
-from app import summaries
+from app.metrics import cagr_pct, pct_change
 
-app = FastAPI(title="Income × Housing Dashboard API", version="1.0.0")
+app = FastAPI(title="Income × Housing Dashboard API", version="2.0.0")
 
-# Mount static folder
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -50,17 +45,23 @@ def _handle_tab1(f: Filters) -> dict:
     y0, y1 = f.y0, f.y1
     theme = f.theme
 
-    # Region name
     region_info = next((r for r in meta["regions"] if r["region_id"] == region), None) if region is not None else None
     scope = region_info["short_th"] if region_info else "ทั่วประเทศ"
+    area_info = next((a for a in meta["area_types"] if a["area_type_id"] == area), None)
+    area_name = area_info["name_th"] if area_info else "รวมทุกเขต"
+
+    # Status line
+    status_line = f"{scope} · ปี {year} · {area_name}"
 
     # KPIs
     kpi_raw = db.query_tab1_kpi(year, area, region)
     income_val = kpi_raw["monthly_income"]
     base_income_val = kpi_raw["base_income"]
-    delta_val = pct_change(base_income_val, income_val)
+
+    is_base_year = (year == 2554)
+    delta_val = pct_change(base_income_val, income_val) if not is_base_year else None
     years_span = year - 2554
-    income_cagr = cagr_pct(base_income_val, income_val, years_span) if years_span > 0 else 0.0
+    income_cagr = cagr_pct(base_income_val, income_val, years_span) if years_span > 0 else None
 
     kpis = [
         {
@@ -73,20 +74,25 @@ def _handle_tab1(f: Filters) -> dict:
                 "unit": "%",
                 "vs": "2554",
                 "direction": "up" if (delta_val or 0) >= 0 else "down",
-            },
+            } if delta_val is not None else None,
         },
         {
             "id": "cagr",
             "label": f"CAGR 2554→{year}",
-            "value": income_cagr,
-            "unit": "%/ปี",
-            "delta": None,
+            "value": round(income_cagr, 2) if income_cagr is not None else "—",
+            "unit": "%/ปี" if income_cagr is not None else "(ปีฐาน)",
+            "delta": {
+                "value": round(abs(income_cagr), 2),
+                "unit": "%",
+                "vs": "2554",
+                "direction": "up" if (income_cagr or 0) >= 0 else "down",
+            } if (income_cagr is not None and not is_base_year) else None,
         },
         {
             "id": "transfer",
             "label": "สัดส่วนเงินโอน/สวัสดิการ",
             "value": round(kpi_raw["transfer_pct"], 1),
-            "unit": "%",
+            "unit": "% ของรายได้",
             "delta": None,
         },
         {
@@ -98,102 +104,85 @@ def _handle_tab1(f: Filters) -> dict:
         },
     ]
 
-    ring = {
-        "label": "สัดส่วนรายได้จากการทำงาน",
-        "value": round(kpi_raw["work_pct"], 1),
-        "unit": "%",
-    }
-
     # Chart 1A: Choropleth
     if f.metric == "transfer":
         choro_data = db.query_tab1_choropleth_transfer(year, area)
-        choro_title = f"สัดส่วนเงินโอน/สวัสดิการรายภาค ปี {year} (%)"
+        metric_label = "สัดส่วนเงินโอน"
+        choro_unit = "%"
     elif f.metric == "index":
         choro_data = db.query_tab1_choropleth_index(year, area)
-        choro_title = f"ดัชนีรายได้รายภาค ปี {year} (2554=100)"
+        metric_label = "ดัชนีรายได้"
+        choro_unit = "(2554=100)"
     else:
         choro_data = db.query_tab1_choropleth(year, area)
-        choro_title = f"รายได้เฉลี่ยรายภาค ปี {year} (บาท/เดือน)"
+        metric_label = "รายได้เฉลี่ย"
+        choro_unit = "บาท/เดือน"
 
-    fig_1a = fig_tab1.fig_choropleth(choro_data, theme=theme, title=choro_title)
-    summary_1a_res = summaries.summary_1a(year, choro_data)
-    table_1a = {
-        "columns": ["รหัสภาค", "ภาค", "ค่า"],
-        "rows": [[r["code"], r["short_th"], round(r["value"], 1)] for r in choro_data],
-    }
+    fig_1a = fig_tab1.fig_choropleth(
+        choro_data,
+        selected_region=region,
+        theme=theme,
+        metric_label=metric_label,
+        unit=choro_unit,
+        year=year,
+        area_name=area_name,
+    )
 
-    # Chart 1B: Treemap
-    treemap_data = db.query_tab1_treemap(year, area, region)
-    treemap_title = f"แหล่งที่มาของรายได้ ปี {year} ({scope})"
-    fig_1b = fig_tab1.fig_treemap(treemap_data, theme=theme, title=treemap_title)
-    summary_1b_res = summaries.summary_1b(year, treemap_data, scope)
-    table_1b = {
-        "columns": ["ภาค", "กลุ่ม", "แหล่งรายได้", "จำนวนเงิน (บาท)", "สัดส่วน (%)"],
-        "rows": [
-            [r["region"], r["group_th"], r["source_name_th"], round(r["amount_baht"]), round(r["share_pct"], 1)]
-            for r in treemap_data
-        ],
-    }
-
-    # Chart 1C: Linear Trend
+    # Chart 1B: Trend (Straight line, categories matching survey years)
     trend_data = db.query_tab1_trend(area, y0, y1)
-    trend_title = f"แนวโน้มรายได้ {y0}→{y1}"
-    fig_1c = fig_tab1.fig_trend(trend_data, theme=theme, metric=f.metric, title=trend_title)
-    summary_1c_res = summaries.summary_1c(y0, y1, scope, trend_data)
-    table_1c = {
-        "columns": ["ปี (พ.ศ.)", "ภาค", "รายได้ (บาท/เดือน)", "ดัชนี (2554=100)"],
-        "rows": [
-            [r["year_be"], r["short_th"], round(r["monthly_income"]), round(r["income_index"], 1)]
-            for r in trend_data
-        ],
-    }
+    fig_1c = fig_tab1.fig_trend(
+        trend_data,
+        selected_region=region,
+        theme=theme,
+        metric=f.metric,
+    )
 
-    # Chart 1D: Urban-Rural Heatmap
+    # Chart 1C: Urban-Rural Heatmap
     heatmap_data = db.query_tab1_heatmap(y0, y1)
-    fig_1d = fig_tab1.fig_heatmap(heatmap_data, theme=theme, title=f"ช่องว่างเมือง-ชนบท {y0}→{y1} (%)")
-    summary_1d_res = summaries.summary_1d(year, heatmap_data)
-    table_1d = {
-        "columns": ["ปี (พ.ศ.)", "ภาค", "ช่องว่าง (%)"],
-        "rows": [[r["year_be"], r["short_th"], round(r["gap_pct"], 1)] for r in heatmap_data],
-    }
+    fig_1d = fig_tab1.fig_heatmap(
+        heatmap_data,
+        selected_region=region,
+        selected_year=year,
+        theme=theme,
+    )
 
-    insights = summaries.tab1_insights(kpi_raw, summary_1a_res, summary_1c_res, summary_1d_res)
+    # Chart 1D: Treemap (Strict parent share calculations, full width)
+    treemap_data = db.query_tab1_treemap(year, area, region)
+    fig_1b = fig_tab1.fig_treemap(treemap_data, theme=theme)
 
     return {
         "filters": f.to_dict(),
-        "headline": summary_1c_res["headline"],
+        "status_line": status_line,
         "kpis": kpis,
-        "ring": ring,
         "charts": {
             "choropleth": {
                 "figure": fig_1a,
-                "summary": summary_1a_res,
-                "table": table_1a,
-                "empty": None,
-            },
-            "treemap": {
-                "figure": fig_1b,
-                "summary": summary_1b_res,
-                "table": table_1b,
+                "read_guide": "สีเข้ม = รายได้สูง · คลิกภาคเพื่อกรอง",
+                "note": "ที่มา: สสช. SES (บาท/ครัวเรือน/เดือน ราคาตามปี)",
                 "empty": None,
             },
             "trend": {
                 "figure": fig_1c,
-                "summary": summary_1c_res,
-                "table": table_1c,
+                "read_guide": "คลิกจุดเพื่อเลือกปี · คลิกเส้นเพื่อเลือกภาค",
+                "note": "รายได้มีเฉพาะปีรอบสำรวจ (ทุก 2 ปี) ไม่เติมค่าปีที่ขาด",
                 "empty": None,
             },
             "heatmap": {
                 "figure": fig_1d,
-                "summary": summary_1d_res,
-                "table": table_1d,
+                "read_guide": "คลิกช่องเพื่อเลือกภาคและปีพร้อมกัน",
+                "note": "ช่องว่างเมือง-ชนบท = (ในเขต − นอกเขต) ÷ นอกเขต × 100",
+                "empty": None,
+            },
+            "treemap": {
+                "figure": fig_1b,
+                "read_guide": "ขนาดกล่อง = ยอดรายได้ · สี = แหล่งที่มาของรายได้",
+                "note": "สัดส่วนคำนวณจากยอดรวมของภาคนั้นๆ (รวม 100%)",
                 "empty": None,
             },
         },
-        "insights": insights,
         "notes": [
             "รายได้เฉลี่ยต่อเดือนของครัวเรือน จากการสำรวจภาวะเศรษฐกิจและสังคมของครัวเรือน (สสช.)",
-            "ข้อมูลมีเฉพาะปีสำรวจทุก 2 ปี (8 รอบ 2554-2568) ไม่ interpolate ข้ามปีที่ขาด",
+            "ข้อมูลมีเฉพาะปีสำรวจทุก 2 ปี (8 รอบ 2554–2568) ไม่เติมค่าข้ามปีที่ขาด",
             "ตัวเลขเป็นราคาตามปี (nominal) ไม่ปรับอัตราเงินเฟ้อ",
         ],
         "as_of": meta["as_of"],
@@ -215,12 +204,19 @@ def _handle_tab2(f: Filters) -> dict:
     pt_info = next((p for p in meta["property_types"] if p["property_type_id"] == pt), None)
     pt_name = pt_info["name_th"] if pt_info else "รวมทุกประเภทที่อยู่อาศัย"
 
+    status_line = f"{scope} · ปี {year} · {pt_name}"
+
     # KPIs
     kpi_raw = db.query_tab2_kpi(year, pt, region)
     idx_val = kpi_raw["index_value"] or 100.0
     base_val = kpi_raw["base_value"] or 100.0
+    is_base_year = (year == 2554)
     years_span = year - 2554
-    cagr_val = cagr_pct(base_val, idx_val, years_span) if years_span > 0 else 0.0
+    cagr_val = cagr_pct(base_val, idx_val, years_span) if years_span > 0 else None
+    yoy_val = kpi_raw["yoy_pct"] if not is_base_year else None
+
+    # Calculate CAGR from 2554 for fastest region
+    fastest_cagr = cagr_pct(100.0, kpi_raw["fastest_idx"] or 100.0, years_span) if years_span > 0 else 0.0
 
     kpis = [
         {
@@ -233,102 +229,95 @@ def _handle_tab2(f: Filters) -> dict:
         {
             "id": "yoy",
             "label": f"YoY ปี {year}",
-            "value": round(kpi_raw["yoy_pct"], 1) if kpi_raw["yoy_pct"] is not None else 0.0,
-            "unit": "%",
+            "value": f"{yoy_val:+.2f}%" if yoy_val is not None else "—",
+            "unit": "เทียบปีก่อน" if yoy_val is not None else "(ปีฐาน)",
             "delta": None,
         },
         {
             "id": "cagr",
             "label": f"CAGR 2554→{year}",
-            "value": cagr_val,
-            "unit": "%/ปี",
-            "delta": None,
+            "value": round(cagr_val, 2) if cagr_val is not None else "—",
+            "unit": "%/ปี" if cagr_val is not None else "(ปีฐาน)",
+            "delta": {
+                "value": round(abs(cagr_val), 2),
+                "unit": "%",
+                "vs": "2554",
+                "direction": "up" if (cagr_val or 0) >= 0 else "down",
+            } if (cagr_val is not None and not is_base_year) else None,
         },
         {
             "id": "fastest",
             "label": "ภาคที่โตเร็วสุด",
-            "value": kpi_raw["fastest_region"] or "-",
-            "unit": f"({round(kpi_raw['fastest_idx'] or 0, 1)})",
+            "value": kpi_raw["fastest_region"] or "—",
+            "unit": f"({fastest_cagr:.2f}%/ปี)" if years_span > 0 else "",
             "delta": None,
         },
     ]
 
-    ring = {
-        "label": f"สูงกว่าปีฐาน (2554)",
-        "value": round(idx_val - 100.0, 1),
-        "unit": "%",
-    }
-
     # Chart 2A: Choropleth
-    choro_data = db.query_tab2_choropleth(year, pt)
-    choro_title = f"ดัชนีราคาบ้านรายภาค ปี {year} ({pt_name})"
-    fig_2a = fig_tab2.fig_choropleth(choro_data, theme=theme, title=choro_title)
-    summary_2a_res = summaries.summary_2a(year, pt_name, scope, choro_data)
-    table_2a = {
-        "columns": ["รหัสภาค", "ภาค", "ดัชนี (2554=100)"],
-        "rows": [[r["code"], r["short_th"], round(r["value"], 1)] for r in choro_data],
-    }
+    if f.metric == "yoy":
+        choro_data = db.query_tab2_choropleth_yoy(year, pt)
+        metric_label = "YoY"
+        unit_label = "%"
+    elif f.metric == "cagr":
+        choro_data = db.query_tab2_choropleth_cagr(year, pt)
+        metric_label = f"CAGR (2554→{year})"
+        unit_label = "%/ปี"
+    else:
+        choro_data = db.query_tab2_choropleth(year, pt)
+        metric_label = "ดัชนีราคาบ้าน"
+        unit_label = "(2554=100)"
 
-    # Check for empty / unavailable series (e.g. Townhouse in North/NE)
+    fig_2a = fig_tab2.fig_choropleth(
+        choro_data,
+        selected_region=region,
+        theme=theme,
+        metric_label=metric_label,
+        unit=unit_label,
+        year=year,
+        pt_name=pt_name,
+    )
+
     empty_notice = None
     if pt == 3 and region in (3, 4):
         empty_notice = "ไม่มีข้อมูลทาวน์เฮ้าส์ของภาคนี้ในฐานข้อมูล ธปท."
 
-    # Chart 2B: Trend (monthly or annual)
+    # Chart 2B: Trend
     if grain == "monthly":
         trend_data = db.query_tab2_trend_monthly(pt, y0, y1)
-        fig_2b = fig_tab2.fig_trend(trend_data, theme=theme, is_monthly=True,
-                                    title=f"แนวโน้มดัชนีราคาบ้านรายเดือน ({pt_name})")
-        table_2b = {
-            "columns": ["เดือน", "ปี (พ.ศ.)", "ภาค", "ดัชนี"],
-            "rows": [[r["month_no"], r["year_be"], r["short_th"], round(r["index_value"], 1)] for r in trend_data],
-        }
+        fig_2b = fig_tab2.fig_trend(trend_data, selected_region=region, theme=theme, is_monthly=True)
     else:
         trend_data = db.query_tab2_trend_annual(pt, y0, y1)
-        fig_2b = fig_tab2.fig_trend(trend_data, theme=theme, is_monthly=False,
-                                    title=f"แนวโน้มดัชนีราคาบ้านรายปี ({pt_name})")
-        table_2b = {
-            "columns": ["ปี (พ.ศ.)", "ภาค", "ดัชนี"],
-            "rows": [[r["year_be"], r["short_th"], round(r["index_value"], 1)] for r in trend_data],
-        }
+        fig_2b = fig_tab2.fig_trend(trend_data, selected_region=region, theme=theme, is_monthly=False)
 
     # Chart 2C: Heatmap YoY
     heatmap_data = db.query_tab2_heatmap(pt, y0, y1)
-    fig_2c = fig_tab2.fig_heatmap(heatmap_data, theme=theme, title=f"อัตราเปลี่ยนแปลงรายปี (YoY %) {y0}→{y1}")
-    summary_2c_res = summaries.summary_2c(year, heatmap_data)
-    table_2c = {
-        "columns": ["ปี (พ.ศ.)", "ภาค", "YoY (%)"],
-        "rows": [[r["year_be"], r["short_th"], round(r["yoy_pct"], 1)] for r in heatmap_data],
-    }
-
-    insights = summaries.tab2_insights(kpi_raw, summary_2a_res, summary_2c_res)
+    fig_2c = fig_tab2.fig_heatmap(heatmap_data, selected_region=region, selected_year=year, theme=theme)
 
     return {
         "filters": f.to_dict(),
-        "headline": summary_2a_res["headline"],
+        "status_line": status_line,
         "kpis": kpis,
-        "ring": ring,
         "charts": {
             "choropleth": {
                 "figure": fig_2a,
-                "summary": summary_2a_res,
-                "table": table_2a,
+                "read_guide": "สีเข้ม = ดัชนีสูง · สีเทา = ไม่มีข้อมูล · คลิกภาคเพื่อกรอง",
+                "note": "ที่มา: ธปท. (EC_EI_008_S4 ฐาน 2554=100)",
                 "empty": empty_notice,
             },
             "trend": {
                 "figure": fig_2b,
-                "summary": summary_2a_res,
-                "table": table_2b,
+                "read_guide": "คลิกจุดเพื่อเลือกปี · คลิกเส้นเพื่อเลือกภาค",
+                "note": "เฉลี่ยเคลื่อนที่ 3 เดือน · ม.ค. 2566 เพิ่มฐานข้อมูลสถาบันการเงินเฉพาะกิจ",
                 "empty": empty_notice,
             },
             "heatmap": {
                 "figure": fig_2c,
-                "summary": summary_2c_res,
-                "table": table_2c,
+                "read_guide": "ฟ้า = ติดลบ · ส้ม = ขยายตัว · คลิกช่องเพื่อเลือกภาคและปีพร้อมกัน",
+                "note": "ดัชนีบอกการเปลี่ยนแปลง ไม่ใช่ระดับราคาบ้านเป็นบาท",
                 "empty": empty_notice,
             },
         },
-        "insights": insights,
         "notes": [
             "ดัชนีราคาที่อยู่อาศัย (2554=100) ธนาคารแห่งประเทศไทย (BoT EC_EI_008_S4)",
             "ดัชนีคำนวณด้วย Hedonic regression แบบเฉลี่ยเคลื่อนที่ 3 เดือน จากฐานข้อมูลสินเชื่อ",
@@ -347,181 +336,160 @@ def _handle_tab3(f: Filters) -> dict:
     region = f.region
     y0, y1 = f.y0, f.y1
     theme = f.theme
+    cagr_view = f.cagr_view
 
     region_info = next((r for r in meta["regions"] if r["region_id"] == region), None) if region is not None else None
     scope = region_info["short_th"] if region_info else "ทั่วประเทศ"
     pt_info = next((p for p in meta["property_types"] if p["property_type_id"] == pt), None)
     pt_name = pt_info["name_th"] if pt_info else "รวมทุกประเภทที่อยู่อาศัย"
 
-    # KPIs
-    kpi_raw = db.query_tab3_kpi(year, pt, y0, y1, region)
-    pti_val = kpi_raw["price_to_income_index"] or 100.0
-    status_label = "ซื้อยากขึ้น" if pti_val > 100 else "ง่ายขึ้น"
+    status_line = f"{scope} · {pt_name} · {y0}–{y1}"
+
+    # Hero Data: Price-to-Income Ratio
+    pti_data = db.query_tab3_price_to_income(pt, y0, y1)
+
+    # Rebase so that start year y0 = 100
+    by_reg = {}
+    for r in pti_data:
+        by_reg.setdefault(r["region_id"], []).append(r)
+
+    rebased_data = []
+    for rid, rows in by_reg.items():
+        base_row = next((r for r in rows if r["year_be"] == y0), None)
+        if not base_row:
+            rebased_data.extend(rows)
+            continue
+        b_inc = base_row["income_index"]
+        b_hpi = base_row["hpi_index"]
+        for r in rows:
+            new_inc = 100.0 * r["income_index"] / b_inc if b_inc else 100.0
+            new_hpi = 100.0 * r["hpi_index"] / b_hpi if b_hpi else 100.0
+            new_pti = 100.0 * (new_hpi / 100.0) / (new_inc / 100.0) if new_inc else 100.0
+            rebased_data.append({
+                **r,
+                "income_index": new_inc,
+                "hpi_index": new_hpi,
+                "price_to_income_index": new_pti,
+            })
+    pti_data = rebased_data
+
+    target_rid = region if region is not None else 0
+    target_row = next((r for r in pti_data if r["region_id"] == target_rid and r["year_be"] == y1), None)
+    pti_val = target_row["price_to_income_index"] if target_row else 100.0
+    hpi_end = target_row["hpi_index"] if target_row else 100.0
+    inc_end = target_row["income_index"] if target_row else 100.0
+
+    # Status badge (10.6)
+    if abs(pti_val - 100.0) <= 0.5:
+        status_text = "ใกล้เดิม"
+        status_dir = "neutral"
+    elif pti_val > 100.0:
+        status_text = "ซื้อยากขึ้น"
+        status_dir = "harder"
+    else:
+        status_text = "ซื้อง่ายขึ้น"
+        status_dir = "easier"
 
     # CAGRs over window y0 -> y1
     income_cagr_rows = db.query_tab3_cagr_income(y0, y1)
     hpi_cagr_rows = db.query_tab3_cagr_hpi(pt, y0, y1)
 
-    target_rid = region if region is not None else 0
     inc_row = next((r for r in income_cagr_rows if r["region_id"] == target_rid), None)
     hpi_row = next((r for r in hpi_cagr_rows if r["region_id"] == target_rid), None)
 
     inc_cagr = cagr_pct(inc_row["v0"], inc_row["v1"], inc_row["years"]) if inc_row else 0.0
     hpi_cagr = cagr_pct(hpi_row["v0"], hpi_row["v1"], hpi_row["years"]) if hpi_row else 0.0
     gap = round((hpi_cagr or 0) - (inc_cagr or 0), 2)
+    gap_sign = "+" if gap > 0 else ""
 
     kpis = [
         {
             "id": "pti",
-            "label": f"ดัชนีราคา ÷ รายได้ ปี {year}",
+            "label": f"ดัชนีราคา ÷ รายได้ ปี {y1}",
             "value": round(pti_val, 1),
-            "unit": f"({status_label})",
+            "unit": f"({status_text})",
+            "subline": f"ราคาบ้าน {hpi_end:.1f} ÷ รายได้ {inc_end:.1f}",
+            "status": status_dir,
             "delta": None,
         },
         {
             "id": "inc_cagr",
             "label": f"CAGR รายได้ {y0}→{y1}",
-            "value": inc_cagr,
+            "value": round(inc_cagr, 2) if inc_cagr is not None else "—",
             "unit": "%/ปี",
             "delta": None,
         },
         {
             "id": "hpi_cagr",
             "label": f"CAGR ราคาบ้าน {y0}→{y1}",
-            "value": hpi_cagr,
+            "value": round(hpi_cagr, 2) if hpi_cagr is not None else "—",
             "unit": "%/ปี",
             "delta": None,
         },
         {
-            "id": "cagr_gap",
-            "label": "ช่องว่าง CAGR (บ้าน - รายได้)",
-            "value": gap,
-            "unit": "จุด %",
+            "id": "gap",
+            "label": f"ช่องว่าง CAGR (บ้าน − รายได้)",
+            "value": f"{gap_sign}{gap:.2f}",
+            "unit": "จุดเปอร์เซ็นต์",
             "delta": None,
         },
     ]
 
-    ring = {
-        "label": "ภาคที่ราคาบ้านโตเร็วกว่ารายได้",
-        "value": f"{kpi_raw['regions_harder']} / {kpi_raw['total_regions']}",
-        "unit": "ภาค",
-    }
+    # Chart 3A: Hero ratio line
+    fig_3a = fig_tab3.fig_price_to_income_hero(
+        pti_data,
+        y0=y0,
+        y1=y1,
+        selected_region=region,
+        theme=theme,
+    )
 
-    # Chart 3A: Ratio Trend
-    pti_data = db.query_tab3_price_to_income(pt, y0, y1)
-
-    # If y0 > 2554, rebase income_index, hpi_index, and price_to_income_index so that y0 = 100
-    if y0 > 2554:
-        by_reg = {}
-        for r in pti_data:
-            by_reg.setdefault(r["region_id"], []).append(r)
-
-        rebased_data = []
-        for rid, rows in by_reg.items():
-            base_row = next((r for r in rows if r["year_be"] == y0), None)
-            if not base_row:
-                rebased_data.extend(rows)
-                continue
-            b_inc = base_row["income_index"]
-            b_hpi = base_row["hpi_index"]
-            for r in rows:
-                new_inc = 100.0 * r["income_index"] / b_inc if b_inc else 100.0
-                new_hpi = 100.0 * r["hpi_index"] / b_hpi if b_hpi else 100.0
-                new_pti = 100.0 * new_hpi / new_inc if new_inc else 100.0
-                rebased_data.append({
-                    **r,
-                    "income_index": new_inc,
-                    "hpi_index": new_hpi,
-                    "price_to_income_index": new_pti,
-                })
-        pti_data = rebased_data
-
-    # Update pti_val for KPI from rebased data if available
-    target_pti_row = next((r for r in pti_data if r["region_id"] == target_rid and r["year_be"] == year), None)
-    if target_pti_row:
-        pti_val = target_pti_row["price_to_income_index"]
-        status_label = "ซื้อยากขึ้น" if pti_val > 100 else "ง่ายขึ้น"
-    fig_3a = fig_tab3.fig_price_to_income_trend(pti_data, y0, y1, theme=theme,
-                                                title=f"ดัชนีราคาบ้าน ÷ รายได้ {y0}→{y1}")
-    summary_3a_res = summaries.summary_3a(y0, y1, scope, pti_data)
-    table_3a = {
-        "columns": ["ปี (พ.ศ.)", "ภาค", "ดัชนีรายได้", "ดัชนีราคาบ้าน", "ดัชนีราคา÷รายได้"],
-        "rows": [
-            [r["year_be"], r["short_th"], round(r["income_index"], 1), round(r["hpi_index"], 1), round(r["price_to_income_index"], 1)]
-            for r in pti_data
-        ],
-    }
-
-    # Chart 3B: Paired Bars (income index vs hpi index)
-    fig_3b = fig_tab3.fig_paired_bars(pti_data, region_name=scope, theme=theme,
-                                      title=f"เปรียบเทียบดัชนีรายได้ vs ราคาบ้าน")
-    table_3b = table_3a
-
-    # Chart 3C: CAGR comparison (2 bars)
-    fig_3c = fig_tab3.fig_cagr_comparison(inc_cagr or 0, hpi_cagr or 0, theme=theme,
-                                          title=f"CAGR ตลอดช่วง {y0}→{y1} ({scope})")
-    summary_3c_res = summaries.summary_3c(inc_cagr or 0, hpi_cagr or 0)
-    table_3c = {
-        "columns": ["ตัวชี้วัด", "CAGR (%/ปี)"],
-        "rows": [["รายได้ครัวเรือน", inc_cagr], ["ดัชนีราคาบ้าน", hpi_cagr]],
-    }
-
-    # Chart 3D: CAGR by region
-    fig_3d = fig_tab3.fig_cagr_by_region(income_cagr_rows, hpi_cagr_rows, theme=theme,
-                                        title=f"CAGR แยกตามภาค {y0}→{y1}")
-    summary_3d_res = summaries.summary_3d(scope, inc_cagr or 0, hpi_cagr or 0)
-    table_3d = {
-        "columns": ["ภาค", "CAGR รายได้ (%/ปี)", "CAGR ราคาบ้าน (%/ปี)", "ช่องว่าง (จุด)"],
-        "rows": [
-            [
-                r_inc["short_th"],
-                cagr_pct(r_inc["v0"], r_inc["v1"], r_inc["years"]),
-                cagr_pct(r_hpi["v0"], r_hpi["v1"], r_hpi["years"]),
-                round((cagr_pct(r_hpi["v0"], r_hpi["v1"], r_hpi["years"]) or 0) - (cagr_pct(r_inc["v0"], r_inc["v1"], r_inc["years"]) or 0), 2)
-            ]
-            for r_inc, r_hpi in zip(income_cagr_rows, hpi_cagr_rows)
-            if not r_inc.get("is_national")
-        ],
-    }
-
-    insights = summaries.tab3_insights(summary_3a_res, summary_3c_res)
+    # Chart 3B: CAGR Comparison (by_region or by_type)
+    cagr_note = "คำนวณจากอัตราเติบโตเฉลี่ยสะสมต่อปี (CAGR)"
+    if cagr_view == "by_type":
+        types_data = db.query_tab3_cagr_hpi_by_type(target_rid, y0, y1)
+        fig_3b = fig_tab3.fig_cagr_by_type(
+            types_data,
+            income_cagr=inc_cagr or 0.0,
+            scope=scope,
+            selected_pt=pt,
+            theme=theme,
+        )
+        if target_rid in (3, 4):
+            cagr_note = "ภาคนี้มีเฉพาะบ้านเดี่ยว ดัชนีรวมเท่ากับบ้านเดี่ยว ไม่มีข้อมูลทาวน์เฮ้าส์ (Q-H1)"
+    else:
+        fig_3b = fig_tab3.fig_cagr_by_region(
+            income_cagr_rows,
+            hpi_cagr_rows,
+            selected_region=region,
+            pt=pt,
+            theme=theme,
+        )
+        if pt == 3:
+            cagr_note = "ทาวน์เฮ้าส์ไม่มีข้อมูลในภาคเหนือและอีสาน"
 
     return {
         "filters": f.to_dict(),
-        "headline": summary_3a_res["headline"],
+        "status_line": status_line,
         "kpis": kpis,
-        "ring": ring,
         "charts": {
-            "price_to_income": {
+            "hero": {
                 "figure": fig_3a,
-                "summary": summary_3a_res,
-                "table": table_3a,
+                "read_guide": "เส้นสูงขึ้น = ราคาบ้านโตเร็วกว่ารายได้ = ซื้อยากขึ้น · เส้นต่ำลง = ซื้อง่ายขึ้น",
+                "note": "ดัชนีบอกการเปลี่ยนแปลงเทียบต้นช่วง ไม่ใช่ระดับราคาบ้านเป็นบาท · ตัดผลเงินเฟ้อส่วนใหญ่ออกไปแล้ว",
                 "empty": None,
             },
-            "paired_bars": {
+            "cagr": {
                 "figure": fig_3b,
-                "summary": summary_3a_res,
-                "table": table_3b,
-                "empty": None,
-            },
-            "cagr_comparison": {
-                "figure": fig_3c,
-                "summary": summary_3c_res,
-                "table": table_3c,
-                "empty": None,
-            },
-            "cagr_by_region": {
-                "figure": fig_3d,
-                "summary": summary_3d_res,
-                "table": table_3d,
+                "read_guide": "แท่งเปรียบเทียบอัตราการเติบโตเฉลี่ยสะสมต่อปี (CAGR)",
+                "note": cagr_note,
                 "empty": None,
             },
         },
-        "insights": insights,
         "notes": [
-            "รายได้มีเฉพาะปีรอบสำรวจของ สสช. ไม่ interpolate ปีที่ขาด",
-            "ทั้งสองชุดข้อมูลเป็นราคาตามปี (nominal) และดัชนีราคาบ้านบอกเฉพาะการเปลี่ยนแปลง ไม่ใช่ระดับราคา",
-            "นิยามพื้นที่ กทม.+ปริมณฑล ของ สสช. กับ ธปท. อาจไม่ตรงกัน (เทียบได้โดยประมาณ)",
+            "รายได้มีเฉพาะปีรอบสำรวจ (ทุก 2 ปี) ไม่เติมค่าปีที่ขาด · ดัชนีบอกการเปลี่ยนแปลงเทียบต้นช่วง ไม่ใช่ระดับราคาบ้านเป็นบาท",
+            "นิยามกทม.+ปริมณฑลของ สสช. กับ ธปท. อาจไม่ตรงกัน",
+            "อัตราส่วนของสองดัชนีตัดผลเงินเฟ้อส่วนใหญ่ออกไปแล้ว แต่ตอบเรื่อง 'รายได้จริงโตหรือไม่' ไม่ได้",
         ],
         "as_of": meta["as_of"],
     }
@@ -539,6 +507,8 @@ def get_tab(
     metric: Optional[str] = Query(None),
     grain: Optional[str] = Query(None),
     theme: Optional[str] = Query(None),
+    cagr_view: Optional[str] = Query(None),
+    real: Optional[bool] = Query(None),
 ):
     try:
         f = Filters.from_params(
@@ -552,6 +522,8 @@ def get_tab(
             metric=metric,
             grain=grain,
             theme=theme,
+            cagr_view=cagr_view,
+            real=real,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -564,67 +536,6 @@ def get_tab(
         return _handle_tab3(f)
     else:
         raise HTTPException(status_code=404, detail="Tab not found")
-
-
-@app.get("/api/export/{tab_id}/{chart_id}.csv")
-def export_csv(
-    tab_id: int,
-    chart_id: str,
-    year: Optional[int] = Query(None),
-    y0: Optional[int] = Query(None),
-    y1: Optional[int] = Query(None),
-    region: Optional[int] = Query(None),
-    area: Optional[int] = Query(None),
-    pt: Optional[int] = Query(None),
-    metric: Optional[str] = Query(None),
-    grain: Optional[str] = Query(None),
-    theme: Optional[str] = Query(None),
-):
-    try:
-        f = Filters.from_params(
-            tab=tab_id,
-            year=year,
-            y0=y0,
-            y1=y1,
-            region=region,
-            area=area,
-            pt=pt,
-            metric=metric,
-            grain=grain,
-            theme=theme,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-
-    if tab_id == 1:
-        tab_res = _handle_tab1(f)
-    elif tab_id == 2:
-        tab_res = _handle_tab2(f)
-    elif tab_id == 3:
-        tab_res = _handle_tab3(f)
-    else:
-        raise HTTPException(status_code=404, detail="Tab not found")
-
-    chart_data = tab_res["charts"].get(chart_id)
-    if not chart_data or "table" not in chart_data:
-        raise HTTPException(status_code=404, detail=f"Chart '{chart_id}' not found")
-
-    table = chart_data["table"]
-    output = io.StringIO()
-    # Write UTF-8 BOM so Excel opens it with Thai characters intact
-    output.write("\ufeff")
-    writer = csv.writer(output)
-    writer.writerow(table["columns"])
-    for row in table["rows"]:
-        writer.writerow(row)
-
-    csv_content = output.getvalue()
-    filename = f"export_tab{tab_id}_{chart_id}_{f.year}.csv"
-    return Response(
-        content=csv_content,
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
 
 
 @app.get("/", response_class=HTMLResponse)

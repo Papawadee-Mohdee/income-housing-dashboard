@@ -20,7 +20,6 @@ from app.db import (
     query_meta,
     query_tab1_kpi,
     query_tab2_kpi,
-    query_tab3_kpi,
     query_tab3_cagr_income,
     query_tab3_cagr_hpi,
     query_tab3_cagr_hpi_by_type,

@@ -1,134 +1,185 @@
-"""Plotly color palette and layout configuration for dark/light themes.
+"""Plotly color palette and layout configuration for dark/light themes (v2 design).
 
-This is the SINGLE SOURCE OF TRUTH for all chart colors and layout defaults.
+Single source of truth for all chart colors, fonts, and layout defaults.
 """
 from __future__ import annotations
 
-# ──────────────────────────────────────── Region colors (constant across tabs/themes)
+# Font family for both UI and Plotly
+FONT_FAMILY = "Anuphan, Noto Sans Thai, Sarabun, system-ui, sans-serif"
+
+# ──────────────────────────────────────── Region colors (constant across charts)
 REGION_COLORS = {
     "dark": {
-        "กทม.+ปริมณฑล": "#4F8FF7",
-        "กลาง": "#22D3EE",
-        "เหนือ": "#A78BFA",
-        "อีสาน": "#FFB347",
-        "ใต้": "#FF7A2E",
-        "ทั่วประเทศ": "#94A3B8",
+        "กทม.+ปริมณฑล": "#5B8CFF",
+        "กลาง": "#3CCBE8",
+        "เหนือ": "#A99DFF",
+        "อีสาน": "#FFC04D",
+        "ใต้": "#FF8A3D",
+        "ทั่วประเทศ": "#8FA0BC",
     },
     "light": {
-        "กทม.+ปริมณฑล": "#2563EB",
-        "กลาง": "#0891B2",
-        "เหนือ": "#7C3AED",
-        "อีสาน": "#D97706",
-        "ใต้": "#E8590C",
-        "ทั่วประเทศ": "#64748B",
+        "กทม.+ปริมณฑล": "#2F6BFF",
+        "กลาง": "#18B8D8",
+        "เหนือ": "#8B7CF6",
+        "อีสาน": "#F5A524",
+        "ใต้": "#FF7A1A",
+        "ทั่วประเทศ": "#8FA0BC",
     },
 }
 
-# Income = blue, Housing = orange
-SEMANTIC_COLORS = {
-    "dark": {"income": "#4F8FF7", "housing": "#FF7A2E", "positive": "#34D399", "negative": "#F87171", "warning": "#FBBF24"},
-    "light": {"income": "#2563EB", "housing": "#E8590C", "positive": "#059669", "negative": "#DC2626", "warning": "#B45309"},
+# ──────────────────────────────────────── Treemap income source colors (4 groups)
+INCOME_SOURCE_COLORS = {
+    "dark": {
+        "จากการทำงาน": "#3B63D9",
+        "เงินโอน/สวัสดิการ": "#5B8CFF",
+        "ไม่เป็นตัวเงิน": "#8FB0FF",
+        "อื่น ๆ": "#2A3A5E",
+    },
+    "light": {
+        "จากการทำงาน": "#173DA8",
+        "เงินโอน/สวัสดิการ": "#2F6BFF",
+        "ไม่เป็นตัวเงิน": "#85B2FF",
+        "อื่น ๆ": "#D6E6FF",
+    },
 }
 
-# Choropleth color scales
-CHOROPLETH_INCOME = [  # blue shades
-    [0, "#C7DBFF"], [0.25, "#8BB8FF"], [0.5, "#4F8FF7"], [0.75, "#2F6FEB"], [1, "#1D4ED8"],
-]
-CHOROPLETH_HOUSING = [  # orange shades
-    [0, "#FFE4CC"], [0.25, "#FFBF85"], [0.5, "#FF7A2E"], [0.75, "#E8590C"], [1, "#C2410C"],
+# ──────────────────────────────────────── Semantic Colors
+SEMANTIC_COLORS = {
+    "dark": {
+        "income": "#5B8CFF",
+        "housing": "#FF8A3D",
+        "positive": "#34D399",
+        "negative": "#F87171",
+        "neutral": "#8FA0BC",
+    },
+    "light": {
+        "income": "#2F6BFF",
+        "housing": "#FF7A1A",
+        "positive": "#0E9F6E",
+        "negative": "#E5484D",
+        "neutral": "#5E6C84",
+    },
+}
+
+# ──────────────────────────────────────── Choropleth Scales
+# Tab 1: blue #EAF2FF -> #2F6BFF -> #0F2A75
+CHOROPLETH_INCOME_SCALE = [
+    [0.0, "#EAF2FF"],
+    [0.5, "#2F6BFF"],
+    [1.0, "#0F2A75"],
 ]
 
-CHOROPLETH_INCOME_LIGHT = [
-    [0, "#DBEAFE"], [0.25, "#93C5FD"], [0.5, "#3B82F6"], [0.75, "#2563EB"], [1, "#1D4ED8"],
-]
-CHOROPLETH_HOUSING_LIGHT = [
-    [0, "#FED7AA"], [0.25, "#FDBA74"], [0.5, "#F97316"], [0.75, "#EA580C"], [1, "#C2410C"],
+# Tab 2: orange #FFF1E6 -> #FF8A3D -> #B3470A
+CHOROPLETH_HOUSING_SCALE = [
+    [0.0, "#FFF1E6"],
+    [0.5, "#FF8A3D"],
+    [1.0, "#B3470A"],
 ]
 
-# Heatmap diverging (blue → neutral → orange, no red/green)
-HEATMAP_DIVERGING = [
-    [0, "#2563EB"], [0.5, "#F2F5FA"], [1, "#FF7A2E"],
+# ──────────────────────────────────────── Heatmap Scales
+# Tab 1: Urban-rural gap (0-65% single blue gradient #EAF2FF -> #2F6BFF -> #0F2A75)
+HEATMAP_GAP_SCALE = [
+    [0.0, "#EAF2FF"],
+    [0.5, "#2F6BFF"],
+    [1.0, "#0F2A75"],
 ]
-HEATMAP_DIVERGING_DARK = [
-    [0, "#4F8FF7"], [0.5, "#1D232C"], [1, "#FF7A2E"],
-]
+
+# Tab 2: YoY diverging at 0 (negative = teal #14B8A6, 0 = light gray #F3F4F6 / dark #1F2937, positive = orange up to #B3470A)
+def get_heatmap_yoy_scale(theme: str = "dark"):
+    zero_color = "#1F2937" if theme == "dark" else "#F3F4F6"
+    return [
+        [0.0, "#14B8A6"],
+        [0.5, zero_color],
+        [1.0, "#B3470A"],
+    ]
 
 # ──────────────────────────────────────── Tokens
 TOKENS = {
     "dark": {
-        "bg": "#0E1116",
-        "surface": "#161B22",
-        "surface_2": "#1D232C",
-        "border": "#2B3340",
-        "text": "#EEF1F6",
-        "text_muted": "#9AA6B8",
-        "blue": "#4F8FF7",
-        "orange": "#FF7A2E",
-        "font_family": "IBM Plex Sans Thai, Noto Sans Thai, Sarabun, system-ui, sans-serif",
+        "bg_from": "#0A0F1A",
+        "bg_to": "#0D1424",
+        "surface": "#111827",
+        "surface_2": "#1A2336",
+        "border": "rgba(255,255,255,0.08)",
+        "text": "#EAF0FA",
+        "text_muted": "#8FA0BC",
+        "blue": "#5B8CFF",
+        "orange": "#FF8A3D",
+        "positive": "#34D399",
+        "negative": "#F87171",
+        "grid": "rgba(120,140,170,0.18)",
     },
     "light": {
-        "bg": "#F2F5FA",
+        "bg_from": "#F5F8FD",
+        "bg_to": "#EAF0FA",
         "surface": "#FFFFFF",
-        "surface_2": "#EDF1F8",
-        "border": "#D9E0EC",
-        "text": "#0F1B2D",
-        "text_muted": "#546178",
-        "blue": "#2563EB",
-        "orange": "#E8590C",
-        "font_family": "IBM Plex Sans Thai, Noto Sans Thai, Sarabun, system-ui, sans-serif",
+        "surface_2": "#F1F5FB",
+        "border": "rgba(11,27,52,0.08)",
+        "text": "#0B1B34",
+        "text_muted": "#5E6C84",
+        "blue": "#2F6BFF",
+        "orange": "#FF7A1A",
+        "positive": "#0E9F6E",
+        "negative": "#E5484D",
+        "grid": "rgba(120,140,170,0.18)",
     },
 }
 
 
 def get_base_layout(theme: str = "dark") -> dict:
-    """Return a Plotly layout dict for the given theme."""
-    t = TOKENS[theme]
+    """Return Plotly base layout adhering strictly to v2 specifications."""
+    t = TOKENS.get(theme, TOKENS["dark"])
     return {
         "paper_bgcolor": "rgba(0,0,0,0)",
         "plot_bgcolor": "rgba(0,0,0,0)",
+        "title": {"text": ""},  # Requirement: layout.title must be empty for all charts
         "font": {
-            "family": t["font_family"],
+            "family": FONT_FAMILY,
             "color": t["text_muted"],
-            "size": 13,
+            "size": 12.5,
         },
-        "title": {"font": {"color": t["text"], "size": 16}},
         "xaxis": {
-            "gridcolor": t["border"],
-            "zerolinecolor": t["border"],
-            "tickfont": {"color": t["text_muted"]},
+            "gridcolor": "rgba(0,0,0,0)",
+            "showgrid": False,
+            "zeroline": False,
+            "showline": False,
+            "tickfont": {"family": FONT_FAMILY, "color": t["text_muted"], "size": 12},
         },
         "yaxis": {
-            "gridcolor": t["border"],
-            "zerolinecolor": t["border"],
-            "tickfont": {"color": t["text_muted"]},
+            "gridcolor": t["grid"],
+            "showgrid": True,
+            "zeroline": False,
+            "showline": False,
+            "tickfont": {"family": FONT_FAMILY, "color": t["text_muted"], "size": 12},
+            "tickformat": ",.0f",  # Requirement: full formatted numbers, no '36k'
         },
-        "coloraxis": {"colorbar": {"tickfont": {"color": t["text_muted"]}}},
-        "margin": {"l": 50, "r": 30, "t": 50, "b": 40},
         "hoverlabel": {
             "bgcolor": t["surface"],
-            "font": {"color": t["text"], "family": t["font_family"]},
-            "bordercolor": t["border"],
+            "bordercolor": t["text_muted"],
+            "font": {"family": FONT_FAMILY, "color": t["text"], "size": 12.5},
         },
-        "legend": {
-            "font": {"color": t["text_muted"]},
-            "bgcolor": "rgba(0,0,0,0)",
-        },
+        "margin": {"l": 16, "r": 16, "t": 8, "b": 28},
         "separators": ",.",
+        "showlegend": False,  # Region buttons act as legend
     }
 
 
-def get_plotly_config() -> dict:
-    """Standard Plotly config for all charts."""
-    return {
+def get_plotly_config(is_map: bool = False) -> dict:
+    """Standard Plotly config."""
+    cfg = {
+        "displayModeBar": False,
         "displaylogo": False,
         "responsive": True,
-        "locale": "th",
     }
+    if is_map:
+        cfg["scrollZoom"] = True
+    return cfg
 
 
 def region_color(short_th: str, theme: str = "dark") -> str:
     """Get the color for a region name."""
-    return REGION_COLORS.get(theme, REGION_COLORS["dark"]).get(short_th, "#94A3B8")
+    palette = REGION_COLORS.get(theme, REGION_COLORS["dark"])
+    return palette.get(short_th, "#8FA0BC")
 
 
 def region_dash(is_national: bool) -> str:

@@ -1,15 +1,9 @@
-"""Database layer — all SQLite queries live here.
-
-Usage:
-    from app.db import get_db, query_tab1, query_tab2, query_tab3, query_meta
-
-All functions return plain Python dicts/lists; no ORM objects leak out.
+"""Database layer — SQLite queries for all tabs, metadata, and KPI aggregations.
 """
 from __future__ import annotations
 
 import sqlite3
 from contextlib import contextmanager
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -17,13 +11,11 @@ DB_PATH = Path(__file__).resolve().parents[1] / "data" / "dashboard.db"
 
 
 def _row_factory(cursor: sqlite3.Cursor, row: tuple) -> dict:
-    """Return rows as dicts."""
     return {col[0]: row[i] for i, col in enumerate(cursor.description)}
 
 
 @contextmanager
 def get_db():
-    """Yield a read-only connection with dict rows."""
     con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
     con.row_factory = _row_factory
     con.execute("PRAGMA foreign_keys = ON")
@@ -33,9 +25,14 @@ def get_db():
         con.close()
 
 
+def check_cpi_available() -> bool:
+    with get_db() as con:
+        r = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='fact_cpi'").fetchone()
+        return r is not None
+
+
 # ──────────────────────────────────────── Meta
 def query_meta() -> dict[str, Any]:
-    """Filter options, dataset metadata, latest-data labels."""
     with get_db() as con:
         years = con.execute(
             "SELECT year_be, has_income_survey, has_hpi FROM dim_year ORDER BY year_be"
@@ -53,7 +50,6 @@ def query_meta() -> dict[str, Any]:
         income_years = [y["year_be"] for y in years if y["has_income_survey"]]
         hpi_years = [y["year_be"] for y in years if y["has_hpi"]]
         latest_income = max(income_years)
-        latest_hpi_year = max(hpi_years)
         latest_hpi_month = con.execute(
             "SELECT month_abbr_th, year_be FROM dim_month ORDER BY month_id DESC LIMIT 1"
         ).fetchone()
@@ -65,6 +61,7 @@ def query_meta() -> dict[str, Any]:
         "area_types": area_types,
         "property_types": property_types,
         "datasets": datasets,
+        "cpi_available": check_cpi_available(),
         "as_of": {
             "income_latest_wave": latest_income,
             "hpi_latest_month": f"{latest_hpi_month['month_abbr_th']} {latest_hpi_month['year_be']}",
@@ -107,24 +104,67 @@ def query_tab1_choropleth_transfer(year: int, area: int) -> list[dict]:
         ).fetchall()
 
 
-def query_tab1_treemap(year: int, area: int, region: int | None) -> list[dict]:
+def query_tab1_treemap(year: int, area: int, region: int | None) -> dict:
+    """Return treemap data strictly respecting parent shares (never summing regions together).
+    
+    If region is None:
+      outer = 5 regions (region_id 1..5)
+      leaves = 4 groups per region (จากการทำงาน, เงินโอน/สวัสดิการ, ไม่เป็นตัวเงิน, อื่น ๆ)
+    If region is not None (e.g. 0 for national or 1..5 for specific region):
+      outer = selected region
+      leaves = 5 detailed leaf sources
+    """
     with get_db() as con:
         if region is not None:
-            return con.execute(
-                """SELECT r.short_th AS region, l.group_th, l.source_name_th, l.amount_baht,
-                          100.0 * l.amount_baht / l.monthly_income AS share_pct
-                   FROM v_income_long l JOIN dim_region r ON r.region_id = l.region_id
-                   WHERE l.year_be = ? AND l.area_type_id = ? AND l.region_id = ?""",
+            # Single region: all 5 leaf sources
+            row = con.execute(
+                """SELECT f.region_id, r.short_th, f.monthly_income, f.from_work,
+                          f.current_transfer, f.nonmoney_income, f.property_income, f.noncur_m_income
+                   FROM fact_income f JOIN dim_region r ON r.region_id = f.region_id
+                   WHERE f.year_be = ? AND f.area_type_id = ? AND f.region_id = ?""",
                 (year, area, region),
-            ).fetchall()
-        return con.execute(
-            """SELECT r.short_th AS region, l.group_th, l.source_name_th, l.amount_baht,
-                      100.0 * l.amount_baht / l.monthly_income AS share_pct
-               FROM v_income_long l JOIN dim_region r ON r.region_id = l.region_id
-               WHERE l.year_be = ? AND l.area_type_id = ? AND r.region_id > 0
+            ).fetchone()
+            if not row:
+                return {"mode": "single", "region": "", "monthly_income": 0, "leaves": []}
+            tot = row["monthly_income"]
+            s1 = round(100.0 * row["from_work"] / tot, 1)
+            s2 = round(100.0 * row["current_transfer"] / tot, 1)
+            s3 = round(100.0 * row["nonmoney_income"] / tot, 1)
+            s4 = round(100.0 * row["property_income"] / tot, 1)
+            s5 = round(100.0 - (s1 + s2 + s3 + s4), 1)
+            leaves = [
+                {"name": "จากการทำงาน", "amount": row["from_work"], "share": s1},
+                {"name": "เงินโอน/สวัสดิการ", "amount": row["current_transfer"], "share": s2},
+                {"name": "ไม่เป็นตัวเงิน", "amount": row["nonmoney_income"], "share": s3},
+                {"name": "ทรัพย์สิน", "amount": row["property_income"], "share": s4},
+                {"name": "ไม่ประจำ", "amount": row["noncur_m_income"], "share": s5},
+            ]
+            return {"mode": "single", "region": row["short_th"], "monthly_income": tot, "leaves": leaves}
+
+        # Multi-region: 5 regions with 4 consolidated groups
+        rows = con.execute(
+            """SELECT f.region_id, r.short_th, f.monthly_income, f.from_work,
+                      f.current_transfer, f.nonmoney_income, (f.property_income + f.noncur_m_income) AS other_income
+               FROM fact_income f JOIN dim_region r ON r.region_id = f.region_id
+               WHERE f.year_be = ? AND f.area_type_id = ? AND f.region_id > 0
                ORDER BY r.map_order""",
             (year, area),
         ).fetchall()
+        regions_data = []
+        for r in rows:
+            tot = r["monthly_income"]
+            s1 = round(100.0 * r["from_work"] / tot, 1)
+            s2 = round(100.0 * r["current_transfer"] / tot, 1)
+            s3 = round(100.0 * r["nonmoney_income"] / tot, 1)
+            s4 = round(100.0 - (s1 + s2 + s3), 1)
+            groups = [
+                {"name": "จากการทำงาน", "amount": r["from_work"], "share": s1},
+                {"name": "เงินโอน/สวัสดิการ", "amount": r["current_transfer"], "share": s2},
+                {"name": "ไม่เป็นตัวเงิน", "amount": r["nonmoney_income"], "share": s3},
+                {"name": "อื่น ๆ", "amount": r["other_income"], "share": s4},
+            ]
+            regions_data.append({"region": r["short_th"], "region_id": r["region_id"], "monthly_income": tot, "groups": groups})
+        return {"mode": "multi", "regions": regions_data}
 
 
 def query_tab1_trend(area: int, y0: int, y1: int) -> list[dict]:
@@ -153,7 +193,6 @@ def query_tab1_heatmap(y0: int, y1: int) -> list[dict]:
 
 
 def query_tab1_kpi(year: int, area: int, region: int | None) -> dict:
-    """KPI data for Tab 1."""
     rid = region if region is not None else 0
     with get_db() as con:
         income = con.execute(
@@ -165,8 +204,6 @@ def query_tab1_kpi(year: int, area: int, region: int | None) -> dict:
             (rid, area),
         ).fetchone()
         transfer_pct = 100.0 * income["current_transfer"] / income["monthly_income"]
-        work_pct = 100.0 * income["from_work"] / income["monthly_income"]
-        # urban-rural gap
         gap = con.execute(
             "SELECT gap_pct FROM v_income_urban_rural_gap WHERE year_be = ? AND region_id = ?",
             (year, rid),
@@ -175,7 +212,6 @@ def query_tab1_kpi(year: int, area: int, region: int | None) -> dict:
         "monthly_income": income["monthly_income"],
         "base_income": base_income["monthly_income"],
         "transfer_pct": transfer_pct,
-        "work_pct": work_pct,
         "gap_pct": gap["gap_pct"] if gap else None,
     }
 
@@ -190,6 +226,37 @@ def query_tab2_choropleth(year: int, pt: int) -> list[dict]:
                ORDER BY r.map_order""",
             (year, pt),
         ).fetchall()
+
+
+def query_tab2_choropleth_yoy(year: int, pt: int) -> list[dict]:
+    with get_db() as con:
+        return con.execute(
+            """SELECT r.region_id, r.code, r.short_th, v.yoy_pct AS value
+               FROM v_hpi_yoy v JOIN dim_region r ON r.region_id = v.region_id
+               WHERE v.year_be = ? AND v.property_type_id = ? AND r.region_id > 0
+               ORDER BY r.map_order""",
+            (year, pt),
+        ).fetchall()
+
+
+def query_tab2_choropleth_cagr(year: int, pt: int) -> list[dict]:
+    with get_db() as con:
+        rows = con.execute(
+            """SELECT r.region_id, r.code, r.short_th,
+                      b.index_mean12 AS v0, a.index_mean12 AS v1, (a.year_be - b.year_be) AS years
+               FROM fact_hpi_annual a
+               JOIN fact_hpi_annual b ON b.region_id = a.region_id AND b.property_type_id = a.property_type_id
+                    AND b.year_be = 2554
+               JOIN dim_region r ON r.region_id = a.region_id
+               WHERE a.year_be = ? AND a.property_type_id = ? AND r.region_id > 0
+               ORDER BY r.map_order""",
+            (year, pt),
+        ).fetchall()
+        result = []
+        for r in rows:
+            c = ((r["v1"] / r["v0"]) ** (1.0 / r["years"]) - 1.0) * 100.0 if r["years"] > 0 else 0.0
+            result.append({"region_id": r["region_id"], "code": r["code"], "short_th": r["short_th"], "value": round(c, 2)})
+        return result
 
 
 def query_tab2_trend_monthly(pt: int, y0: int, y1: int) -> list[dict]:
@@ -245,9 +312,9 @@ def query_tab2_kpi(year: int, pt: int, region: int | None) -> dict:
             "SELECT yoy_pct FROM v_hpi_yoy WHERE year_be = ? AND region_id = ? AND property_type_id = ?",
             (year, rid, pt),
         ).fetchone()
-        # fastest growing region
         fastest = con.execute(
-            """SELECT r.short_th, a.index_mean12 AS idx
+            """SELECT r.short_th, a.index_mean12 AS idx,
+                      100.0 * ((a.index_mean12 / b.index_mean12) - 1.0) AS growth
                FROM fact_hpi_annual a JOIN dim_region r ON r.region_id = a.region_id
                JOIN fact_hpi_annual b ON b.region_id = a.region_id AND b.property_type_id = a.property_type_id
                     AND b.year_be = (SELECT MIN(year_be) FROM fact_hpi_annual)
@@ -310,6 +377,26 @@ def query_tab3_cagr_hpi(pt: int, y0: int, y1: int) -> list[dict]:
 
 def query_tab3_cagr_hpi_by_type(region: int, y0: int, y1: int) -> list[dict]:
     with get_db() as con:
+        # North and Northeast have only detached houses (Q-H1)
+        if region in (3, 4):
+            row = con.execute(
+                """SELECT s.index_mean12 AS v0, e.index_mean12 AS v1, e.year_be - s.year_be AS years
+                   FROM fact_hpi_annual s
+                   JOIN fact_hpi_annual e ON e.region_id = s.region_id AND e.property_type_id = s.property_type_id
+                   WHERE s.year_be = ? AND e.year_be = ? AND s.region_id = ? AND s.property_type_id = 1""",
+                (y0, y1, region),
+            ).fetchone()
+            if row:
+                return [{
+                    "property_type_id": 1,
+                    "code": "ALL_DETACHED",
+                    "name_th": "ภาพรวม = บ้านเดี่ยว",
+                    "v0": row["v0"],
+                    "v1": row["v1"],
+                    "years": row["years"],
+                }]
+            return []
+
         return con.execute(
             """SELECT p.property_type_id, p.code, p.name_th,
                       s.index_mean12 AS v0, e.index_mean12 AS v1,
@@ -322,30 +409,3 @@ def query_tab3_cagr_hpi_by_type(region: int, y0: int, y1: int) -> list[dict]:
                ORDER BY p.property_type_id""",
             (y0, y1, region),
         ).fetchall()
-
-
-def query_tab3_kpi(year: int, pt: int, y0: int, y1: int, region: int | None) -> dict:
-    rid = region if region is not None else 0
-    with get_db() as con:
-        pti = con.execute(
-            "SELECT price_to_income_index FROM v_price_to_income WHERE year_be = ? AND region_id = ? AND property_type_id = ?",
-            (year, rid, pt),
-        ).fetchone()
-        # count regions where HPI grew faster than income
-        rows = con.execute(
-            """SELECT r.region_id,
-                      100.0 * (h_e.index_mean12 / h_s.index_mean12) / (i_e.monthly_income / i_s.monthly_income) AS pti
-               FROM dim_region r
-               JOIN fact_income i_s ON i_s.region_id = r.region_id AND i_s.year_be = ? AND i_s.area_type_id = 0
-               JOIN fact_income i_e ON i_e.region_id = r.region_id AND i_e.year_be = ? AND i_e.area_type_id = 0
-               JOIN fact_hpi_annual h_s ON h_s.region_id = r.region_id AND h_s.year_be = ? AND h_s.property_type_id = ?
-               JOIN fact_hpi_annual h_e ON h_e.region_id = r.region_id AND h_e.year_be = ? AND h_e.property_type_id = ?
-               WHERE r.region_id > 0""",
-            (y0, y1, y0, pt, y1, pt),
-        ).fetchall()
-        harder = sum(1 for r in rows if r["pti"] > 100)
-    return {
-        "price_to_income_index": pti["price_to_income_index"] if pti else None,
-        "regions_harder": harder,
-        "total_regions": 5,
-    }
