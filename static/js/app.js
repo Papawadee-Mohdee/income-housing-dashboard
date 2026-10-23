@@ -16,7 +16,7 @@
     pt: 1,
     metric: 'income',
     grain: 'yearly',
-    cagr_view: 'by_region',
+    cagr_view: 'summary',
     theme: document.documentElement.getAttribute('data-theme') || 'dark',
     meta: null,
     tabData: null,
@@ -95,14 +95,18 @@
     if (state.y0 !== 2554 || state.y1 !== 2568) return true;
     if (state.tab === 1 && (state.area !== 0 || state.metric !== 'income')) return true;
     if (state.tab === 2 && (state.pt !== 1 || state.grain !== 'yearly' || state.metric !== 'hpi')) return true;
-    if (state.tab === 3 && (state.pt !== 1 || state.cagr_view !== 'by_region')) return true;
+    if (state.tab === 3 && (state.pt !== 1 || state.cagr_view !== 'summary')) return true;
     return false;
   }
 
   // ──────────────── Theme Handling ────────────────
   function initTheme() {
+    const params = new URLSearchParams(window.location.search);
+    const urlTheme = params.get('theme');
     const saved = localStorage.getItem('ihd-theme');
-    if (saved) {
+    if (urlTheme && (urlTheme === 'dark' || urlTheme === 'light')) {
+      state.theme = urlTheme;
+    } else if (saved) {
       state.theme = saved;
     } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
       state.theme = 'light';
@@ -113,12 +117,12 @@
 
     const toggleBtn = document.getElementById('theme-toggle-btn');
     if (toggleBtn) {
-      toggleBtn.addEventListener('click', () => {
+      toggleBtn.onclick = () => {
         state.theme = state.theme === 'dark' ? 'light' : 'dark';
         applyTheme(state.theme);
         updateUrl();
         queueFetch();
-      });
+      };
     }
   }
 
@@ -191,30 +195,33 @@
 
     container.innerHTML = '';
 
-    const leftCol = document.createElement('div');
-    leftCol.className = 'control-bar-left';
+    // Title
+    const title = document.createElement('div');
+    title.className = 'sidebar-filters-title';
+    title.textContent = 'ตัวกรองข้อมูล';
+    container.appendChild(title);
 
-    // 1. Region Radio Chips with color dots
+    // 1. Region Radio Chips with color dots (Grid 2-col, National spans 2)
     const regionGroup = document.createElement('div');
-    regionGroup.className = 'control-group';
+    regionGroup.className = 'sidebar-control-group';
     regionGroup.innerHTML = `
-      <span class="control-label">ภูมิภาค:</span>
-      <div class="region-chips" role="radiogroup">
-        <button class="region-chip ${state.region === null ? 'active' : ''}" data-region="null" role="radio" aria-checked="${state.region === null}">
+      <span class="sidebar-control-label">ภูมิภาค:</span>
+      <div class="sidebar-region-chips" role="radiogroup">
+        <button class="sidebar-region-chip span-full ${state.region === null ? 'active' : ''}" data-region="null" role="radio" aria-checked="${state.region === null}">
           <span class="region-dot" style="background-color: ${REGION_COLORS[0]}"></span>
           <span>ทั้งประเทศ</span>
         </button>
         ${state.meta.regions.filter(r => r.region_id > 0).map(r => `
-          <button class="region-chip ${state.region === r.region_id ? 'active' : ''}" data-region="${r.region_id}" role="radio" aria-checked="${state.region === r.region_id}" style="${state.region === r.region_id ? `background-color: ${REGION_COLORS[r.region_id]}26; border-color: ${REGION_COLORS[r.region_id]}` : ''}">
+          <button class="sidebar-region-chip ${state.region === r.region_id ? 'active' : ''}" data-region="${r.region_id}" role="radio" aria-checked="${state.region === r.region_id}" style="${state.region === r.region_id ? `border-color: ${REGION_COLORS[r.region_id]}; background-color: ${REGION_COLORS[r.region_id]}22;` : ''}">
             <span class="region-dot" style="background-color: ${REGION_COLORS[r.region_id]}"></span>
             <span>${r.short_th}</span>
           </button>
         `).join('')}
       </div>
     `;
-    leftCol.appendChild(regionGroup);
+    container.appendChild(regionGroup);
 
-    regionGroup.querySelectorAll('.region-chip').forEach(btn => {
+    regionGroup.querySelectorAll('.sidebar-region-chip').forEach(btn => {
       btn.onclick = () => {
         const targetReg = btn.dataset.region === 'null' ? null : parseInt(btn.dataset.region, 10);
         state.region = (state.region === targetReg && targetReg !== null) ? null : targetReg;
@@ -227,19 +234,20 @@
     // 2. Year Selection
     if (state.tab === 1 || state.tab === 2) {
       const yearGroup = document.createElement('div');
-      yearGroup.className = 'control-group';
+      yearGroup.className = 'sidebar-control-group';
       const years = state.tab === 1 ? state.meta.income_years : state.meta.hpi_years;
+      const labelText = state.tab === 1 ? 'ปีสำรวจ (สสช.):' : 'ปีดัชนี (ธปท.):';
       yearGroup.innerHTML = `
-        <span class="control-label">ปี:</span>
-        <div class="year-chips-scroll">
+        <span class="sidebar-control-label">${labelText}</span>
+        <div class="sidebar-year-grid">
           ${years.map(y => `
-            <button class="year-chip-btn ${state.year === y ? 'active' : ''}" data-year="${y}">${y}</button>
+            <button class="sidebar-year-btn ${state.year === y ? 'active' : ''}" data-year="${y}">${y}</button>
           `).join('')}
         </div>
       `;
-      leftCol.appendChild(yearGroup);
+      container.appendChild(yearGroup);
 
-      yearGroup.querySelectorAll('.year-chip-btn').forEach(btn => {
+      yearGroup.querySelectorAll('.sidebar-year-btn').forEach(btn => {
         btn.onclick = () => {
           state.year = parseInt(btn.dataset.year, 10);
           updateUrl();
@@ -250,18 +258,20 @@
     } else if (state.tab === 3) {
       // Tab 3: Year Range (Start & End)
       const rangeGroup = document.createElement('div');
-      rangeGroup.className = 'control-group';
+      rangeGroup.className = 'sidebar-control-group';
       rangeGroup.innerHTML = `
-        <span class="control-label">ช่วงปี:</span>
-        <select class="control-select" id="y0-select">
-          ${state.meta.income_years.map(y => `<option value="${y}" ${state.y0 === y ? 'selected' : ''}>${y}</option>`).join('')}
-        </select>
-        <span style="color: var(--text-muted); font-size: 0.85rem;">→</span>
-        <select class="control-select" id="y1-select">
-          ${state.meta.income_years.map(y => `<option value="${y}" ${state.y1 === y ? 'selected' : ''}>${y}</option>`).join('')}
-        </select>
+        <span class="sidebar-control-label">ช่วงปีเปรียบเทียบ:</span>
+        <div class="sidebar-year-range-row">
+          <select class="sidebar-select" id="y0-select">
+            ${state.meta.income_years.map(y => `<option value="${y}" ${state.y0 === y ? 'selected' : ''}>${y}</option>`).join('')}
+          </select>
+          <span style="color: var(--text-muted); font-size: 0.85rem;">→</span>
+          <select class="sidebar-select" id="y1-select">
+            ${state.meta.income_years.map(y => `<option value="${y}" ${state.y1 === y ? 'selected' : ''}>${y}</option>`).join('')}
+          </select>
+        </div>
       `;
-      leftCol.appendChild(rangeGroup);
+      container.appendChild(rangeGroup);
 
       rangeGroup.querySelector('#y0-select').onchange = (e) => {
         const val = parseInt(e.target.value, 10);
@@ -287,34 +297,32 @@
       };
     }
 
-    // 3. Tab-Specific Controls
+    // 3. Tab-Specific Controls (Area or Property Type)
     if (state.tab === 1) {
-      // Area Select
       const areaGroup = document.createElement('div');
-      areaGroup.className = 'control-group';
+      areaGroup.className = 'sidebar-control-group';
       areaGroup.innerHTML = `
-        <span class="control-label">เขต:</span>
-        <select class="control-select" id="area-select">
+        <span class="sidebar-control-label">ประเภทเขต:</span>
+        <select class="sidebar-select" id="area-select">
           ${state.meta.area_types.map(a => `<option value="${a.area_type_id}" ${state.area === a.area_type_id ? 'selected' : ''}>${a.name_th}</option>`).join('')}
         </select>
       `;
-      leftCol.appendChild(areaGroup);
+      container.appendChild(areaGroup);
       areaGroup.querySelector('#area-select').onchange = (e) => {
         state.area = parseInt(e.target.value, 10);
         updateUrl();
         queueFetch();
       };
     } else if (state.tab === 2 || state.tab === 3) {
-      // Property Type Select
       const ptGroup = document.createElement('div');
-      ptGroup.className = 'control-group';
+      ptGroup.className = 'sidebar-control-group';
       ptGroup.innerHTML = `
-        <span class="control-label">ประเภทบ้าน:</span>
-        <select class="control-select" id="pt-select">
+        <span class="sidebar-control-label">ประเภทที่อยู่อาศัย:</span>
+        <select class="sidebar-select" id="pt-select">
           ${state.meta.property_types.map(p => `<option value="${p.property_type_id}" ${state.pt === p.property_type_id ? 'selected' : ''}>${p.name_th}</option>`).join('')}
         </select>
       `;
-      leftCol.appendChild(ptGroup);
+      container.appendChild(ptGroup);
       ptGroup.querySelector('#pt-select').onchange = (e) => {
         state.pt = parseInt(e.target.value, 10);
         updateUrl();
@@ -322,20 +330,18 @@
       };
     }
 
-    container.appendChild(leftCol);
-
-    // Right Column: Clear Filters Ghost Button
+    // Clear Filters Ghost Button
     if (hasNonDefaultFilters()) {
       const clearBtn = document.createElement('button');
-      clearBtn.className = 'btn-ghost-clear';
-      clearBtn.innerHTML = `${ICONS.rotateCcw} <span>ล้างตัวกรอง</span>`;
+      clearBtn.className = 'btn-sidebar-clear';
+      clearBtn.innerHTML = `${ICONS.rotateCcw} <span>ล้างตัวกรองทั้งหมด</span>`;
       clearBtn.onclick = () => {
         state.region = null;
         state.area = 0;
         state.pt = 1;
         state.metric = state.tab === 2 ? 'hpi' : 'income';
         state.grain = 'yearly';
-        state.cagr_view = 'by_region';
+        state.cagr_view = 'summary';
         state.year = 2568;
         state.y0 = 2554;
         state.y1 = 2568;
@@ -592,28 +598,36 @@
 
   // ──────────────── Tab 3 Charts Rendering ────────────────
   function renderTab3Charts(container, data) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tab3-charts-container';
+
     // 1. Hero Price-to-Income Line Chart
     const heroCard = document.createElement('div');
     heroCard.className = 'chart-card chart-card-full';
     const heroObj = data.charts.hero;
     heroCard.innerHTML = `
       <div class="chart-header">
-        <h3 class="chart-title">ดัชนีราคาบ้าน ÷ ดัชนีรายได้</h3>
+        <h3 class="chart-title">1 · กราฟเส้นอัตราส่วนราคาบ้านต่อรายได้ (Price-to-Income Ratio Trend)</h3>
       </div>
       <div class="chart-read-guide">${heroObj.read_guide || ''}</div>
       <div class="plotly-container" id="plot-hero"></div>
       <div class="chart-note">${heroObj.note || ''}</div>
     `;
-    container.appendChild(heroCard);
+    wrapper.appendChild(heroCard);
+
+    // Row 2: 2 Columns for Graph 2 (CAGR) and Graph 3 (Gap Area)
+    const midGrid = document.createElement('div');
+    midGrid.className = 'tab3-mid-grid';
 
     // 2. CAGR Comparison Chart
     const cagrCard = document.createElement('div');
-    cagrCard.className = 'chart-card chart-card-full';
+    cagrCard.className = 'chart-card';
     const cagrObj = data.charts.cagr;
     cagrCard.innerHTML = `
       <div class="chart-header">
-        <h3 class="chart-title">การเติบโตเฉลี่ยสะสมต่อปี (CAGR)</h3>
+        <h3 class="chart-title">2 · เปรียบเทียบอัตราการเติบโตสะสม (CAGR)</h3>
         <div class="segmented-control" id="cagr-view-control">
+          <button class="segmented-btn ${state.cagr_view === 'summary' ? 'active' : ''}" data-view="summary">ภาพรวม</button>
           <button class="segmented-btn ${state.cagr_view === 'by_region' ? 'active' : ''}" data-view="by_region">แยกตามภาค</button>
           <button class="segmented-btn ${state.cagr_view === 'by_type' ? 'active' : ''}" data-view="by_type">แยกตามประเภทบ้าน</button>
         </div>
@@ -622,8 +636,41 @@
       <div class="plotly-container" id="plot-cagr"></div>
       <div class="chart-note">${cagrObj.note || ''}</div>
     `;
-    container.appendChild(cagrCard);
+    midGrid.appendChild(cagrCard);
 
+    // 3. Affordability Gap Area Chart
+    const gapCard = document.createElement('div');
+    gapCard.className = 'chart-card';
+    const gapObj = data.charts.gap_area;
+    gapCard.innerHTML = `
+      <div class="chart-header">
+        <h3 class="chart-title">3 · กราฟพื้นที่ส่วนต่างความเหลื่อมล้ำ (Affordability Gap)</h3>
+      </div>
+      <div class="chart-read-guide">${gapObj.read_guide || ''}</div>
+      <div class="plotly-container" id="plot-gap-area"></div>
+      <div class="chart-note">${gapObj.note || ''}</div>
+    `;
+    midGrid.appendChild(gapCard);
+
+    wrapper.appendChild(midGrid);
+
+    // 4. Growth Balance Scatter Plot
+    const scatterCard = document.createElement('div');
+    scatterCard.className = 'chart-card chart-card-full';
+    const scatterObj = data.charts.scatter;
+    scatterCard.innerHTML = `
+      <div class="chart-header">
+        <h3 class="chart-title">4 · ประเมินความสมดุลการเติบโตของพื้นที่ (Income vs House Price Growth)</h3>
+      </div>
+      <div class="chart-read-guide">${scatterObj.read_guide || ''}</div>
+      <div class="plotly-container" id="plot-scatter"></div>
+      <div class="chart-note">${scatterObj.note || ''}</div>
+    `;
+    wrapper.appendChild(scatterCard);
+
+    container.appendChild(wrapper);
+
+    // Wire up Graph 2 toggle switch
     const cagrSeg = cagrCard.querySelector('#cagr-view-control');
     if (cagrSeg) {
       cagrSeg.querySelectorAll('button').forEach(btn => {
@@ -637,6 +684,8 @@
 
     renderPlotly('plot-hero', heroObj.figure, false);
     renderPlotly('plot-cagr', cagrObj.figure, false);
+    renderPlotly('plot-gap-area', gapObj.figure, false);
+    renderPlotly('plot-scatter', scatterObj.figure, false);
   }
 
   // ──────────────── Plotly Rendering & Click Handlers ────────────────
@@ -657,6 +706,16 @@
     el.on('plotly_click', (eventData) => {
       if (!eventData || !eventData.points || !eventData.points.length) return;
       const pt = eventData.points[0];
+
+      // 0. Scatter Point Click (customdata[5] = region_id)
+      if (pt.customdata && pt.customdata.length >= 6 && typeof pt.customdata[5] === 'number') {
+        const clickedRid = pt.customdata[5];
+        state.region = state.region === clickedRid ? null : clickedRid;
+        updateUrl();
+        renderControlBar();
+        queueFetch();
+        return;
+      }
 
       // 1. Map Click: location = region_id
       if (pt.location !== undefined) {
@@ -740,6 +799,19 @@
   }
 
   // ──────────────── Tab Switching ────────────────
+  function updateTabUI() {
+    const tabs = document.querySelectorAll('.nav-item[data-tab]');
+    tabs.forEach(t => t.classList.toggle('active', parseInt(t.getAttribute('data-tab'), 10) === state.tab));
+
+    const tabTitles = {
+      1: '1 · รายได้ครัวเรือน (สสช.)',
+      2: '2 · ดัชนีราคาบ้าน (ธปท.)',
+      3: '3 · รายได้ vs ราคาบ้าน (เปรียบเทียบ)',
+    };
+    const titleEl = document.getElementById('tab-title');
+    if (titleEl) titleEl.textContent = tabTitles[state.tab] || '';
+  }
+
   function initTabs() {
     const tabs = document.querySelectorAll('.nav-item[data-tab]');
     tabs.forEach(tabBtn => {
@@ -747,27 +819,19 @@
         const targetTab = parseInt(tabBtn.getAttribute('data-tab'), 10);
         if (targetTab === state.tab) return;
         state.tab = targetTab;
-        tabs.forEach(t => t.classList.toggle('active', parseInt(t.getAttribute('data-tab'), 10) === state.tab));
-
-        const tabTitles = {
-          1: '1 · รายได้ครัวเรือน (สสช.)',
-          2: '2 · ดัชนีราคาบ้าน (ธปท.)',
-          3: '3 · รายได้ vs ราคาบ้าน (เปรียบเทียบ)',
-        };
-        const titleEl = document.getElementById('tab-title');
-        if (titleEl) titleEl.textContent = tabTitles[state.tab];
-
+        updateTabUI();
         updateUrl();
         renderControlBar();
         queueFetch();
       });
     });
+    updateTabUI();
   }
 
   // ──────────────── Init ────────────────
   window.addEventListener('DOMContentLoaded', async () => {
-    initTheme();
     readUrlParams();
+    initTheme();
     initTabs();
     await fetchMeta();
     await fetchTabData();

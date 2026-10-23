@@ -81,12 +81,25 @@ def capture():
         time.sleep(1.5)
         page.screenshot(path=str(SCREENSHOTS_DIR / "05_tab2_dark_default.png"))
 
-        # 6. Tab 3 Dark Default (Bonus verification)
+        # 6. Tab 3 Dark Default
         print("Capturing 06_tab3_dark_default.png...")
         page.goto(f"{base_url}/?tab=3&theme=dark&y0=2554&y1=2568", wait_until="networkidle")
         page.wait_for_selector("#plot-hero .plot-container", timeout=15000)
+        page.wait_for_selector("#plot-cagr .plot-container", timeout=15000)
+        page.wait_for_selector("#plot-gap-area .plot-container", timeout=15000)
+        page.wait_for_selector("#plot-scatter .plot-container", timeout=15000)
         time.sleep(1.5)
-        page.screenshot(path=str(SCREENSHOTS_DIR / "06_tab3_dark_default.png"))
+        page.screenshot(path=str(SCREENSHOTS_DIR / "06_tab3_dark_default.png"), full_page=True)
+
+        # 7. Tab 3 Light Default
+        print("Capturing 07_tab3_light_default.png...")
+        page.goto(f"{base_url}/?tab=3&theme=light&y0=2554&y1=2568", wait_until="networkidle")
+        page.wait_for_selector("#plot-hero .plot-container", timeout=15000)
+        page.wait_for_selector("#plot-cagr .plot-container", timeout=15000)
+        page.wait_for_selector("#plot-gap-area .plot-container", timeout=15000)
+        page.wait_for_selector("#plot-scatter .plot-container", timeout=15000)
+        time.sleep(1.5)
+        page.screenshot(path=str(SCREENSHOTS_DIR / "07_tab3_light_default.png"), full_page=True)
 
         browser.close()
         print("All screenshots successfully captured!")

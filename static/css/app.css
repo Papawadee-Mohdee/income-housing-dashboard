@@ -3,7 +3,7 @@
 /* ──────────────── App Layout ──────────────── */
 .app-container {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 280px 1fr;
   min-height: 100vh;
 }
 
@@ -17,14 +17,31 @@
 .sidebar {
   background-color: var(--surface);
   border-right: 1px solid var(--border);
-  padding: 24px 16px;
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 16px;
   position: sticky;
   top: 0;
   height: 100vh;
   z-index: 20;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 2px 0;
+  flex-shrink: 0;
 }
 
 @media (max-width: 1023px) {
@@ -188,78 +205,80 @@
   background-color: var(--surface-2);
 }
 
-/* ──────────────── Sticky Control Bar ──────────────── */
-.control-bar {
-  position: sticky;
-  top: 0;
-  z-index: 15;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--card-shadow);
-  border-radius: var(--radius-card);
-  padding: 14px 20px;
+/* ──────────────── Sidebar Filters ──────────────── */
+.sidebar-filters {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 14px;
 }
 
-.control-bar-left {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-}
-
-.control-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.control-label {
-  font-size: 0.85rem;
-  font-weight: 600;
+.sidebar-filters-title {
+  font-size: 0.72rem;
+  font-weight: 700;
   color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 2px;
+  margin-bottom: -4px;
 }
 
-/* Region Radio Chips */
-.region-chips {
+.sidebar-control-group {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
-  background-color: var(--surface-2);
-  padding: 4px;
-  border-radius: var(--radius-btn);
 }
 
-.region-chip {
+.sidebar-control-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Region Radio Chips (Grid 2-col, National spans 2) */
+.sidebar-region-chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.sidebar-region-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 6px 10px;
   border-radius: var(--radius-btn);
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
   font-weight: 500;
   transition: all var(--transition-fast);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.region-chip:hover {
+.sidebar-region-chip.span-full {
+  grid-column: span 2;
+  justify-content: center;
+}
+
+.sidebar-region-chip:hover {
+  background-color: var(--surface);
   color: var(--text);
+  border-color: var(--text-muted);
 }
 
-.region-chip.active {
+.sidebar-region-chip.active {
   background-color: var(--surface);
   color: var(--text);
   font-weight: 700;
-  border-color: var(--border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .region-dot {
@@ -267,82 +286,115 @@
   height: 8px;
   border-radius: 50%;
   display: inline-block;
+  flex-shrink: 0;
 }
 
-/* Year Chips */
-.year-chips-scroll {
-  display: flex;
-  align-items: center;
+/* Year Chips Grid (4 columns) */
+.sidebar-year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  overflow-x: auto;
-  max-width: 380px;
-  padding: 2px 0;
 }
 
-.year-chip-btn {
-  padding: 4px 10px;
+.sidebar-year-btn {
+  padding: 5px 0;
+  text-align: center;
   border-radius: var(--radius-btn);
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   cursor: pointer;
   font-weight: 500;
   transition: all var(--transition-fast);
-  white-space: nowrap;
 }
 
-.year-chip-btn:hover {
-  background-color: var(--surface-2);
+.sidebar-year-btn:hover {
+  background-color: var(--surface);
   color: var(--text);
+  border-color: var(--text-muted);
 }
 
-.year-chip-btn.active {
+.sidebar-year-btn.active {
   background-color: var(--blue);
   color: white;
   font-weight: 700;
+  border-color: var(--blue);
 }
 
-/* Select Controls */
-.control-select {
+/* Tab 3 Year Range Row */
+.sidebar-year-range-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Select Controls in Sidebar */
+.sidebar-select {
+  width: 100%;
   background-color: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 6px 14px;
+  padding: 7px 10px;
   border-radius: var(--radius-btn);
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
   outline: none;
+  transition: all var(--transition-fast);
 }
 
-.control-select:focus-visible {
+.sidebar-select:focus-visible {
   border-color: var(--focus);
   outline: 2px solid var(--focus);
 }
 
-.btn-ghost-clear {
+/* Clear Filters Ghost Button */
+.btn-sidebar-clear {
+  width: 100%;
   background: transparent;
   border: 1px dashed var(--border);
   color: var(--text-muted);
-  padding: 6px 14px;
+  padding: 7px 12px;
   border-radius: var(--radius-btn);
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   transition: all var(--transition-fast);
+  margin-top: 4px;
 }
 
-.btn-ghost-clear:hover {
-  background-color: var(--surface-2);
-  color: var(--text);
-  border-color: var(--text-muted);
+.btn-sidebar-clear:hover {
+  background-color: rgba(229, 72, 77, 0.08);
+  border-color: #E5484D;
+  color: #E5484D;
+}
+
+/* ──────────────── Tab 3 Layout ──────────────── */
+.tab3-charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tab3-mid-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 960px) {
+  .tab3-mid-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ──────────────── KPI Grid ──────────────── */

@@ -226,9 +226,17 @@ def test_tab3_values(expected):
     assert kpis["inc_cagr"]["value"] == expected["income_cagr_pct"]["TH"]
     assert kpis["hpi_cagr"]["value"] == expected["hpi_all_cagr_pct"]["TH"]
 
-    # Charts present
+    # Charts present (All 4 charts in Tab 3)
     assert "hero" in data["charts"]
     assert "cagr" in data["charts"]
+    assert "gap_area" in data["charts"]
+    assert "scatter" in data["charts"]
+
+    # Test CAGR view modes
+    for mode in ["summary", "by_region", "by_type"]:
+        res_mode = client.get(f"/api/tab/3?y0=2554&y1=2566&cagr_view={mode}")
+        assert res_mode.status_code == 200
+        assert len(res_mode.json()["charts"]["cagr"]["figure"]["data"]) >= 2
 
 
 def test_tab3_rebase_2558():

@@ -435,8 +435,8 @@ def _handle_tab3(f: Filters) -> dict:
         },
     ]
 
-    # Chart 3A: Hero ratio line
-    fig_3a = fig_tab3.fig_price_to_income_hero(
+    # Chart 3A: Hero ratio line (Graph 1)
+    fig_hero = fig_tab3.fig_price_to_income_hero(
         pti_data,
         y0=y0,
         y1=y1,
@@ -444,29 +444,38 @@ def _handle_tab3(f: Filters) -> dict:
         theme=theme,
     )
 
-    # Chart 3B: CAGR Comparison (by_region or by_type)
+    # Chart 3B: CAGR Comparison (Graph 2 with toggle: summary vs by_type)
     cagr_note = "คำนวณจากอัตราเติบโตเฉลี่ยสะสมต่อปี (CAGR)"
-    if cagr_view == "by_type":
-        types_data = db.query_tab3_cagr_hpi_by_type(target_rid, y0, y1)
-        fig_3b = fig_tab3.fig_cagr_by_type(
-            types_data,
-            income_cagr=inc_cagr or 0.0,
-            scope=scope,
-            selected_pt=pt,
-            theme=theme,
-        )
-        if target_rid in (3, 4):
-            cagr_note = "ภาคนี้มีเฉพาะบ้านเดี่ยว ดัชนีรวมเท่ากับบ้านเดี่ยว ไม่มีข้อมูลทาวน์เฮ้าส์ (Q-H1)"
-    else:
-        fig_3b = fig_tab3.fig_cagr_by_region(
-            income_cagr_rows,
-            hpi_cagr_rows,
-            selected_region=region,
-            pt=pt,
-            theme=theme,
-        )
-        if pt == 3:
-            cagr_note = "ทาวน์เฮ้าส์ไม่มีข้อมูลในภาคเหนือและอีสาน"
+    types_data = db.query_tab3_cagr_hpi_by_type(target_rid, y0, y1)
+    if cagr_view == "by_type" and target_rid in (3, 4):
+        cagr_note = "ภาคนี้มีเฉพาะบ้านเดี่ยว ดัชนีรวมเท่ากับบ้านเดี่ยว ไม่มีข้อมูลทาวน์เฮ้าส์ (Q-H1)"
+
+    fig_cagr = fig_tab3.fig_cagr_comparison(
+        income_cagr=inc_cagr or 0.0,
+        hpi_cagr=hpi_cagr or 0.0,
+        types_data=types_data,
+        income_rows=income_cagr_rows,
+        hpi_rows=hpi_cagr_rows,
+        view_mode=cagr_view or "summary",
+        scope_name=scope,
+        selected_pt=pt,
+        theme=theme,
+    )
+
+    # Chart 3C: Affordability Gap Area (Graph 3)
+    fig_gap_area = fig_tab3.fig_affordability_gap_area(
+        pti_data,
+        selected_region=region,
+        theme=theme,
+    )
+
+    # Chart 3D: Growth Balance Scatter Plot (Graph 4)
+    fig_scatter = fig_tab3.fig_growth_balance_scatter(
+        income_rows=income_cagr_rows,
+        hpi_rows=hpi_cagr_rows,
+        selected_region=region,
+        theme=theme,
+    )
 
     return {
         "filters": f.to_dict(),
@@ -474,15 +483,27 @@ def _handle_tab3(f: Filters) -> dict:
         "kpis": kpis,
         "charts": {
             "hero": {
-                "figure": fig_3a,
-                "read_guide": "เส้นสูงขึ้น = ราคาบ้านโตเร็วกว่ารายได้ = ซื้อยากขึ้น · เส้นต่ำลง = ซื้อง่ายขึ้น",
+                "figure": fig_hero,
+                "read_guide": "เส้นสูงขึ้น = ราคาบ้านโตเร็วกว่ารายได้ (ซื้อยากขึ้น) · เส้นต่ำลง = ซื้อง่ายขึ้น",
                 "note": "ดัชนีบอกการเปลี่ยนแปลงเทียบต้นช่วง ไม่ใช่ระดับราคาบ้านเป็นบาท · ตัดผลเงินเฟ้อส่วนใหญ่ออกไปแล้ว",
                 "empty": None,
             },
             "cagr": {
-                "figure": fig_3b,
+                "figure": fig_cagr,
                 "read_guide": "แท่งเปรียบเทียบอัตราการเติบโตเฉลี่ยสะสมต่อปี (CAGR)",
                 "note": cagr_note,
+                "empty": None,
+            },
+            "gap_area": {
+                "figure": fig_gap_area,
+                "read_guide": "พื้นที่สีแดง = ราคาบ้านพุ่งแซงรายได้ (ซื้อยากขึ้น) · พื้นที่สีเขียว = รายได้โตแซง (ซื้อง่ายขึ้น)",
+                "note": "ช่องว่างความเหลื่อมล้ำ = ดัชนีราคาบ้าน − ดัชนีรายได้",
+                "empty": None,
+            },
+            "scatter": {
+                "figure": fig_scatter,
+                "read_guide": "ใต้เส้นประ = รายได้โตไวกว่า · เหนือเส้นประ = ราคาบ้านแซง · ซ้ายบน = เสี่ยงฟองสบู่",
+                "note": "คลิกที่จุดเพื่อเลือกดูภาคนั้นๆ · เส้นประทแยงมุม 45 องศาคือระดับที่รายได้และราคาบ้านเติบโตเท่ากัน",
                 "empty": None,
             },
         },

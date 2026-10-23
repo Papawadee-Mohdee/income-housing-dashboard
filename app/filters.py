@@ -17,7 +17,7 @@ class Filters:
     metric: str = "income"
     grain: str = "yearly"
     theme: str = "dark"
-    cagr_view: str = "by_region"
+    cagr_view: str = "summary"
     real: bool = False
 
     VALID_TABS = {1, 2, 3}
@@ -26,7 +26,7 @@ class Filters:
     VALID_METRICS = {"income", "index", "transfer", "hpi", "yoy", "cagr"}
     VALID_GRAINS = {"yearly", "monthly"}
     VALID_THEMES = {"dark", "light"}
-    VALID_CAGR_VIEWS = {"by_region", "by_type"}
+    VALID_CAGR_VIEWS = {"summary", "by_region", "by_type"}
     INCOME_YEARS = {2554, 2556, 2558, 2560, 2562, 2564, 2566, 2568}
     ALL_YEARS = set(range(2554, 2569))
 
