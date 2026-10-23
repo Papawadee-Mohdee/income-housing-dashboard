@@ -379,11 +379,15 @@ def fig_treemap(data: dict, theme: str = "dark") -> dict:
         for reg in data.get("regions", []):
             reg_name = reg["region"]
             tot = reg["monthly_income"]
+            groups = reg.get("groups", [])
+            children_sum = sum(g["amount"] for g in groups)
+            parent_val = children_sum if children_sum > 0 else tot
+
             # Parent node
             reg_id = f"REG_{reg['region_id']}"
             labels.append(reg_id)
             parents.append("")
-            values.append(tot)
+            values.append(parent_val)
             texts.append(f"<b>{reg_name} · {tot:,.0f} บาท</b>")
             customdata.append([100.0, reg_name])
             marker_colors.append(t["surface_2"])
