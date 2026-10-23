@@ -8,9 +8,9 @@ from typing import Optional
 @dataclass
 class Filters:
     tab: int = 1
-    year: int = 2566
+    year: int = 2568
     y0: int = 2554
-    y1: int = 2566
+    y1: int = 2568
     region: Optional[int] = None
     area: int = 0
     pt: int = 1

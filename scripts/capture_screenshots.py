@@ -48,42 +48,42 @@ def capture():
 
         # 1. Tab 1 Light Default
         print("Capturing 01_tab1_light_default.png...")
-        page.goto(f"{base_url}/?tab=1&theme=light&year=2566", wait_until="networkidle")
+        page.goto(f"{base_url}/?tab=1&theme=light&year=2568", wait_until="networkidle")
         page.wait_for_selector("#plot-choropleth .plot-container", timeout=15000)
         time.sleep(1.5)
         page.screenshot(path=str(SCREENSHOTS_DIR / "01_tab1_light_default.png"))
 
         # 2. Tab 1 Light Isan (region 4)
         print("Capturing 02_tab1_light_isan.png...")
-        page.goto(f"{base_url}/?tab=1&theme=light&year=2566&region=4", wait_until="networkidle")
+        page.goto(f"{base_url}/?tab=1&theme=light&year=2568&region=4", wait_until="networkidle")
         page.wait_for_selector("#plot-choropleth .plot-container", timeout=15000)
         time.sleep(1.5)
         page.screenshot(path=str(SCREENSHOTS_DIR / "02_tab1_light_isan.png"))
 
         # 3. Tab 1 Dark Default
         print("Capturing 03_tab1_dark_default.png...")
-        page.goto(f"{base_url}/?tab=1&theme=dark&year=2566", wait_until="networkidle")
+        page.goto(f"{base_url}/?tab=1&theme=dark&year=2568", wait_until="networkidle")
         page.wait_for_selector("#plot-choropleth .plot-container", timeout=15000)
         time.sleep(1.5)
         page.screenshot(path=str(SCREENSHOTS_DIR / "03_tab1_dark_default.png"))
 
         # 4. Tab 2 Light Default
         print("Capturing 04_tab2_light_default.png...")
-        page.goto(f"{base_url}/?tab=2&theme=light&year=2566", wait_until="networkidle")
+        page.goto(f"{base_url}/?tab=2&theme=light&year=2568", wait_until="networkidle")
         page.wait_for_selector("#plot-choropleth .plot-container", timeout=15000)
         time.sleep(1.5)
         page.screenshot(path=str(SCREENSHOTS_DIR / "04_tab2_light_default.png"))
 
         # 5. Tab 2 Dark Default
         print("Capturing 05_tab2_dark_default.png...")
-        page.goto(f"{base_url}/?tab=2&theme=dark&year=2566", wait_until="networkidle")
+        page.goto(f"{base_url}/?tab=2&theme=dark&year=2568", wait_until="networkidle")
         page.wait_for_selector("#plot-choropleth .plot-container", timeout=15000)
         time.sleep(1.5)
         page.screenshot(path=str(SCREENSHOTS_DIR / "05_tab2_dark_default.png"))
 
         # 6. Tab 3 Dark Default (Bonus verification)
         print("Capturing 06_tab3_dark_default.png...")
-        page.goto(f"{base_url}/?tab=3&theme=dark&y0=2554&y1=2566", wait_until="networkidle")
+        page.goto(f"{base_url}/?tab=3&theme=dark&y0=2554&y1=2568", wait_until="networkidle")
         page.wait_for_selector("#plot-hero .plot-container", timeout=15000)
         time.sleep(1.5)
         page.screenshot(path=str(SCREENSHOTS_DIR / "06_tab3_dark_default.png"))

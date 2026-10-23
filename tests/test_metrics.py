@@ -165,9 +165,9 @@ def test_filter_validation():
     """Test filter validation rules."""
     # Valid default filters
     f = Filters.from_params(tab=1)
-    assert f.year == 2566
+    assert f.year == 2568
     assert f.y0 == 2554
-    assert f.y1 == 2566
+    assert f.y1 == 2568
 
     # Valid custom
     f2 = Filters.from_params(tab=2, year=2567, pt=2, theme="light", grain="monthly")

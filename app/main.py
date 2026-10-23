@@ -129,7 +129,7 @@ def _handle_tab1(f: Filters) -> dict:
     )
 
     # Chart 1B: Trend (Straight line, categories matching survey years)
-    trend_data = db.query_tab1_trend(area, y0, y1)
+    trend_data = db.query_tab1_trend(area, 2554, 2568)
     fig_1c = fig_tab1.fig_trend(
         trend_data,
         selected_region=region,
@@ -138,7 +138,7 @@ def _handle_tab1(f: Filters) -> dict:
     )
 
     # Chart 1C: Urban-Rural Heatmap
-    heatmap_data = db.query_tab1_heatmap(y0, y1)
+    heatmap_data = db.query_tab1_heatmap(2554, 2568)
     fig_1d = fig_tab1.fig_heatmap(
         heatmap_data,
         selected_region=region,
@@ -284,14 +284,14 @@ def _handle_tab2(f: Filters) -> dict:
 
     # Chart 2B: Trend
     if grain == "monthly":
-        trend_data = db.query_tab2_trend_monthly(pt, y0, y1)
+        trend_data = db.query_tab2_trend_monthly(pt, 2554, 2568)
         fig_2b = fig_tab2.fig_trend(trend_data, selected_region=region, theme=theme, is_monthly=True)
     else:
-        trend_data = db.query_tab2_trend_annual(pt, y0, y1)
+        trend_data = db.query_tab2_trend_annual(pt, 2554, 2568)
         fig_2b = fig_tab2.fig_trend(trend_data, selected_region=region, theme=theme, is_monthly=False)
 
     # Chart 2C: Heatmap YoY
-    heatmap_data = db.query_tab2_heatmap(pt, y0, y1)
+    heatmap_data = db.query_tab2_heatmap(pt, 2554, 2568)
     fig_2c = fig_tab2.fig_heatmap(heatmap_data, selected_region=region, selected_year=year, theme=theme)
 
     return {

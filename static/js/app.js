@@ -8,9 +8,9 @@
   // ──────────────── State (Single Client Store) ────────────────
   const state = {
     tab: 1,
-    year: 2566,
+    year: 2568,
     y0: 2554,
-    y1: 2566,
+    y1: 2568,
     region: null,
     area: 0,
     pt: 1,
@@ -91,8 +91,8 @@
 
   function hasNonDefaultFilters() {
     if (state.region !== null) return true;
-    if (state.year !== 2566) return true;
-    if (state.y0 !== 2554 || state.y1 !== 2566) return true;
+    if (state.year !== 2568) return true;
+    if (state.y0 !== 2554 || state.y1 !== 2568) return true;
     if (state.tab === 1 && (state.area !== 0 || state.metric !== 'income')) return true;
     if (state.tab === 2 && (state.pt !== 1 || state.grain !== 'yearly' || state.metric !== 'hpi')) return true;
     if (state.tab === 3 && (state.pt !== 1 || state.cagr_view !== 'by_region')) return true;
@@ -336,9 +336,9 @@
         state.metric = state.tab === 2 ? 'hpi' : 'income';
         state.grain = 'yearly';
         state.cagr_view = 'by_region';
-        state.year = 2566;
+        state.year = 2568;
         state.y0 = 2554;
-        state.y1 = 2566;
+        state.y1 = 2568;
         updateUrl();
         renderControlBar();
         queueFetch();
