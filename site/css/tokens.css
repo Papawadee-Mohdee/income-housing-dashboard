@@ -1,0 +1,78 @@
+/* Design tokens v2 for Income × Housing Dashboard */
+@import url('https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&display=swap');
+
+:root {
+  --font-family: 'Anuphan', 'Noto Sans Thai', 'Sarabun', system-ui, -apple-system, sans-serif;
+  --radius-card: 24px;
+  --radius-icon: 12px;
+  --radius-btn: 9999px;
+  --radius-chip: 9999px;
+  --radius-sm: 8px;
+  --transition-fast: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-light: 0 1px 2px rgba(11, 27, 52, 0.04), 0 12px 32px rgba(11, 27, 52, 0.06);
+}
+
+[data-theme="dark"] {
+  --bg-gradient: linear-gradient(180deg, #0A0F1A 0%, #0D1424 100%);
+  --bg-solid: #0A0F1A;
+  --surface: #111827;
+  --surface-2: #1A2336;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #EAF0FA;
+  --text-muted: #8FA0BC;
+  --blue: #5B8CFF;
+  --blue-soft: rgba(91, 140, 255, 0.15);
+  --blue-700: #2F55C9;
+  --orange: #FF8A3D;
+  --orange-soft: rgba(255, 138, 61, 0.15);
+  --positive: #34D399;
+  --positive-soft: rgba(52, 211, 153, 0.15);
+  --negative: #F87171;
+  --negative-soft: rgba(248, 113, 113, 0.15);
+  --focus: #5B8CFF;
+  --card-border: 1px solid var(--border);
+  --card-shadow: none;
+}
+
+[data-theme="light"] {
+  --bg-gradient: linear-gradient(180deg, #F5F8FD 0%, #EAF0FA 100%);
+  --bg-solid: #F5F8FD;
+  --surface: #FFFFFF;
+  --surface-2: #F1F5FB;
+  --border: rgba(11, 27, 52, 0.08);
+  --text: #0B1B34;
+  --text-muted: #5E6C84;
+  --blue: #2F6BFF;
+  --blue-soft: rgba(47, 107, 255, 0.10);
+  --blue-700: #173DA8;
+  --orange: #FF7A1A;
+  --orange-soft: rgba(255, 122, 26, 0.10);
+  --positive: #0E9F6E;
+  --positive-soft: rgba(14, 159, 110, 0.12);
+  --negative: #E5484D;
+  --negative-soft: rgba(229, 72, 77, 0.12);
+  --focus: #2F6BFF;
+  --card-border: 1px solid var(--border);
+  --card-shadow: var(--shadow-light);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text);
+  line-height: 1.6;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

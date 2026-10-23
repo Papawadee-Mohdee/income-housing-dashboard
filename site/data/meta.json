@@ -1,0 +1,192 @@
+{
+  "years": [
+    {
+      "year_be": 2554,
+      "has_income_survey": 1,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2555,
+      "has_income_survey": 0,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2556,
+      "has_income_survey": 1,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2557,
+      "has_income_survey": 0,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2558,
+      "has_income_survey": 1,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2559,
+      "has_income_survey": 0,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2560,
+      "has_income_survey": 1,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2561,
+      "has_income_survey": 0,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2562,
+      "has_income_survey": 1,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2563,
+      "has_income_survey": 0,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2564,
+      "has_income_survey": 1,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2565,
+      "has_income_survey": 0,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2566,
+      "has_income_survey": 1,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2567,
+      "has_income_survey": 0,
+      "has_hpi": 1
+    },
+    {
+      "year_be": 2568,
+      "has_income_survey": 1,
+      "has_hpi": 1
+    }
+  ],
+  "income_years": [
+    2554,
+    2556,
+    2558,
+    2560,
+    2562,
+    2564,
+    2566,
+    2568
+  ],
+  "hpi_years": [
+    2554,
+    2555,
+    2556,
+    2557,
+    2558,
+    2559,
+    2560,
+    2561,
+    2562,
+    2563,
+    2564,
+    2565,
+    2566,
+    2567,
+    2568
+  ],
+  "regions": [
+    {
+      "region_id": 0,
+      "code": "TH",
+      "short_th": "ทั่วประเทศ",
+      "name_th": "ทั่วราชอาณาจักร",
+      "is_national": 1,
+      "map_order": 0
+    },
+    {
+      "region_id": 1,
+      "code": "BMR",
+      "short_th": "กทม.+ปริมณฑล",
+      "name_th": "กรุงเทพมหานครและปริมณฑล",
+      "is_national": 0,
+      "map_order": 1
+    },
+    {
+      "region_id": 2,
+      "code": "CEN",
+      "short_th": "กลาง",
+      "name_th": "ภาคกลาง",
+      "is_national": 0,
+      "map_order": 2
+    },
+    {
+      "region_id": 3,
+      "code": "NOR",
+      "short_th": "เหนือ",
+      "name_th": "ภาคเหนือ",
+      "is_national": 0,
+      "map_order": 3
+    },
+    {
+      "region_id": 4,
+      "code": "NES",
+      "short_th": "อีสาน",
+      "name_th": "ภาคตะวันออกเฉียงเหนือ",
+      "is_national": 0,
+      "map_order": 4
+    },
+    {
+      "region_id": 5,
+      "code": "SOU",
+      "short_th": "ใต้",
+      "name_th": "ภาคใต้",
+      "is_national": 0,
+      "map_order": 5
+    }
+  ],
+  "area_types": [
+    {
+      "area_type_id": 0,
+      "name_th": "รวม"
+    },
+    {
+      "area_type_id": 1,
+      "name_th": "ในเขตเทศบาล"
+    },
+    {
+      "area_type_id": 2,
+      "name_th": "นอกเขตเทศบาล"
+    }
+  ],
+  "property_types": [
+    {
+      "property_type_id": 1,
+      "code": "ALL",
+      "name_th": "รวมทุกประเภทที่อยู่อาศัย"
+    },
+    {
+      "property_type_id": 2,
+      "code": "DETACHED",
+      "name_th": "บ้านเดี่ยวพร้อมที่ดิน"
+    },
+    {
+      "property_type_id": 3,
+      "code": "TOWNHOUSE",
+      "name_th": "ทาวน์เฮ้าส์พร้อมที่ดิน"
+    }
+  ],
+  "cpi_available": false,
+  "as_of": {
+    "income_latest_wave": 2568,
+    "hpi_latest_month": "ธ.ค. 2568"
+  }
+}

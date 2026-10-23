@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Income × Housing Dashboard — รายได้ครัวเรือน vs ดัชนีราคาบ้าน</title>
+  
+  <!-- Anti-flicker theme init -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('ihd-theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+  
+  <!-- Plotly.js CDN -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+  <!-- Pre-bundled Data (Works offline & direct file:// without CORS issues) -->
+  <script src="data/data.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- ──────────────── Sidebar ──────────────── -->
+    <aside class="sidebar">
+      <a href="#" class="brand">
+        <div class="brand-icon-box">IH</div>
+        <div>
+          <div>Income × Housing</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">ไทยแลนด์ 2554–2568</div>
+        </div>
+      </a>
+
+      <nav>
+        <ul class="nav-menu">
+          <li>
+            <button class="nav-item active" data-tab="1">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+              <span>1 · รายได้ครัวเรือน</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" data-tab="2">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span>2 · ดัชนีราคาบ้าน</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-item" data-tab="3">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+              <span>3 · รายได้ vs ราคาบ้าน</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Sidebar Filters Section Under Tab 3 -->
+      <section class="sidebar-filters" id="control-bar">
+        <!-- Controls rendered dynamically by app.js -->
+      </section>
+
+      <div class="sidebar-footer">
+        <button class="nav-item" id="btn-info" onclick="document.getElementById('info-modal').showModal()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <span>ข้อมูล & ระเบียบวิธี</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ──────────────── Main Content ──────────────── -->
+    <main class="main-content">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 class="tab-title" id="tab-title">1 · รายได้ครัวเรือน (สสช.)</h1>
+          <div class="tab-status-line" id="tab-status-line">ทั่วประเทศ · ปี 2566 · รวมทุกเขต</div>
+        </div>
+        <div class="topbar-right">
+          <span class="as-of-badge" id="as-of-badge">กำลังโหลดข้อมูลล่าสุด...</span>
+          <button class="theme-toggle-btn" id="theme-toggle-btn" title="สลับธีม มืด/สว่าง" aria-label="สลับธีม">
+          </button>
+        </div>
+      </header>
+
+      <!-- KPI Grid -->
+      <section class="kpi-grid" id="kpi-container">
+        <!-- KPI cards rendered dynamically by app.js -->
+      </section>
+
+      <!-- Charts Grid / Container -->
+      <section class="charts-container" id="charts-container">
+        <!-- Charts rendered dynamically by app.js -->
+      </section>
+
+      <!-- Notes / Footnotes -->
+      <footer class="notes-card" id="notes-card">
+        <strong style="color: var(--text);">หมายเหตุและที่มาข้อมูล:</strong>
+        <div id="notes-list"></div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- ──────────────── Info Modal ──────────────── -->
+  <dialog id="info-modal" style="background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 24px; max-width: 600px; margin: auto; box-shadow: var(--shadow-lg);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2 style="font-size: 1.25rem;">ข้อมูลและระเบียบวิธีวิจัย</h2>
+      <button onclick="document.getElementById('info-modal').close()" style="background: none; border: none; font-size: 1.5rem; color: var(--text); cursor: pointer;" aria-label="ปิด">&times;</button>
+    </div>
+    <div style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; display: flex; flex-direction: column; gap: 12px;">
+      <p><strong>1. รายได้ครัวเรือน:</strong> ข้อมูลจากการสำรวจภาวะเศรษฐกิจและสังคมของครัวเรือน (SES) โดยสำนักงานสถิติแห่งชาติ (สสช.) ทุก 2 ปี (8 รอบ 2554–2568) แสดงเป็นรายได้เฉลี่ยต่อเดือนต่อครัวเรือนในราคาตามปี (nominal)</p>
+      <p><strong>2. ดัชนีราคาที่อยู่อาศัย:</strong> จัดทำโดยธนาคารแห่งประเทศไทย (ธปท.) ฐาน 2554 = 100 ใช้ Hedonic regression แบบเฉลี่ยเคลื่อนที่ 3 เดือน</p>
+      <p><strong>3. การเปรียบเทียบ:</strong> คำนวณเป็นดัชนีราคาต่อรายได้ (Price-to-Income Index) โดย rebase ให้ปีต้นช่วง = 100 หากมากกว่า 100 แสดงว่าราคาบ้านโตเร็วกว่ารายได้ ("ซื้อยากขึ้น")</p>
+      <p style="color: var(--danger, #E5484D);"><strong>ข้อควรระวัง:</strong> ข้อมูลนี้เปรียบเทียบอัตราการเติบโต ไม่ใช่ระดับราคาบ้านเป็นบาท จึงไม่สามารถคำนวณจำนวนปีของรายได้ที่ต้องใช้ซื้อบ้านได้</p>
+    </div>
+  </dialog>
+
+  <!-- Engine & App Scripts -->
+  <script src="js/engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
