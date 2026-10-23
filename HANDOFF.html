@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handoff · income-housing-dashboard</title>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('ihd-theme');
+    if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --font:'IBM Plex Sans Thai','Noto Sans Thai','Sarabun',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --radius:20px;--radius-sm:12px;
+}
+html[data-theme="dark"]{
+  --bg:#0E1116;--surface:#161B22;--surface-2:#1D232C;--border:#2B3340;--text:#EEF1F6;--text-muted:#9AA6B8;
+  --blue:#4F8FF7;--blue-strong:#2F6FEB;--blue-soft:rgba(79,143,247,.16);--orange:#FF7A2E;--orange-soft:rgba(255,122,46,.16);
+  --positive:#34D399;--negative:#F87171;--warning:#FBBF24;--focus:#7DB0FF;--shadow:none;
+  --r1:#4F8FF7;--r2:#22D3EE;--r3:#A78BFA;--r4:#FFB347;--r5:#FF7A2E;--r0:#94A3B8;
+}
+html[data-theme="light"]{
+  --bg:#F2F5FA;--surface:#FFFFFF;--surface-2:#EDF1F8;--border:#D9E0EC;--text:#0F1B2D;--text-muted:#546178;
+  --blue:#2563EB;--blue-strong:#1D4ED8;--blue-soft:rgba(37,99,235,.10);--orange:#E8590C;--orange-soft:rgba(232,89,12,.10);
+  --positive:#059669;--negative:#DC2626;--warning:#B45309;--focus:#1D4ED8;--shadow:0 1px 2px rgba(15,27,45,.06),0 8px 24px rgba(15,27,45,.06);
+  --r1:#2563EB;--r2:#0891B2;--r3:#7C3AED;--r4:#D97706;--r5:#E8590C;--r0:#64748B;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.65;font-variant-numeric:tabular-nums}
+a{color:var(--blue)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+.app{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;padding:24px 16px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:20px;background:var(--bg)}
+.brand{display:flex;align-items:center;gap:12px;padding:0 8px}
+.brand-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--orange));flex:none}
+.brand b{display:block;font-weight:600;font-size:15px;line-height:1.2}
+.brand span{font-size:12px;color:var(--text-muted)}
+.nav{display:flex;flex-direction:column;gap:2px;overflow:auto}
+.nav a{display:block;padding:9px 12px;border-radius:var(--radius-sm);color:var(--text-muted);text-decoration:none;font-weight:500}
+.nav a:hover{background:var(--surface-2);color:var(--text)}
+.nav a.on{background:var(--blue-soft);color:var(--blue)}
+.side-foot{margin-top:auto;padding:12px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);font-size:13px;color:var(--text-muted)}
+.bar{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:var(--blue);border-radius:99px;transition:width .25s}
+.content{min-width:0}
+.top{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 32px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.top .grow{flex:1}
+.btn{font:inherit;font-size:13px;font-weight:500;padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{background:var(--blue-strong)}
+.btn[aria-pressed="true"]{background:var(--orange-soft);border-color:var(--orange);color:var(--text)}
+.btn.sm{padding:5px 10px;font-size:12px}
+main{padding:28px 32px 80px;max-width:1180px}
+section{margin-bottom:48px;scroll-margin-top:80px}
+h1{font-size:30px;line-height:1.25;margin:0 0 6px;font-weight:600}
+h2{font-size:22px;margin:0 0 4px;font-weight:600}
+h3{font-size:16px;margin:0 0 8px;font-weight:600}
+.lead{color:var(--text-muted);margin:0 0 20px;max-width:68ch}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-size:28px;font-weight:600;line-height:1.2}
+.stat span{font-size:13px;color:var(--text-muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:500;background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border)}
+.chip.blue{background:var(--blue-soft);color:var(--blue);border-color:transparent}
+.chip.orange{background:var(--orange-soft);color:var(--text);border-color:transparent}
+.chip.warn{background:color-mix(in srgb,var(--warning) 16%,transparent);color:var(--text);border-color:transparent}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-weight:600;color:var(--text-muted);font-size:13px}
+tbody tr:last-child td{border-bottom:0}
+.tbl{overflow:auto;border-radius:var(--radius-sm)}
+code,.mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:.88em}
+code{background:var(--surface-2);padding:1px 6px;border-radius:6px}
+pre{margin:0;padding:16px;border-radius:var(--radius-sm);background:var(--surface-2);overflow:auto;font-size:13px;line-height:1.55}
+.cmd{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.cmd pre{flex:1}
+.steps{counter-reset:s;list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start}
+.steps li::before{content:counter(s);display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--blue-soft);color:var(--blue);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--text-muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:baseline}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.seg button{font:inherit;font-size:13px;padding:7px 14px;border:0;background:var(--surface);color:var(--text-muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--blue-soft);color:var(--blue);font-weight:600}
+.link-row.on td{background:var(--orange-soft)}
+.link-row.src td{background:var(--blue-soft)}
+.ed{border-radius:6px}
+body.editing .ed{outline:1px dashed var(--orange);outline-offset:2px;cursor:text}
+body.editing .ed:focus{outline:2px solid var(--orange)}
+.editbanner{display:none;margin:0 0 20px;padding:10px 14px;border-radius:var(--radius-sm);background:var(--orange-soft);border:1px solid var(--orange);font-size:14px}
+body.editing .editbanner{display:block}
+.task{display:grid;grid-template-columns:28px minmax(0,1fr) 130px 130px;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--border)}
+.task:last-child{border-bottom:0}
+.task input[type=checkbox]{width:20px;height:20px;accent-color:var(--blue);margin-top:3px}
+.task select,.task input[type=text],.dec select{font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);width:100%}
+.task .t-ok{font-size:13px;color:var(--text-muted)}
+.task.done .t-title{text-decoration:line-through;color:var(--text-muted)}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sw{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;font-size:12px;background:var(--surface)}
+.sw i{display:block;height:44px;border-bottom:1px solid var(--border)}
+.sw div{padding:6px 10px;color:var(--text-muted)}
+.sw b{display:block;color:var(--text);font-weight:500}
+/* wireframe */
+.wf{display:grid;grid-template-columns:72px minmax(0,1fr) 220px;gap:14px;padding:14px;border-radius:var(--radius);background:var(--bg);border:1px solid var(--border)}
+.wf-nav{display:flex;flex-direction:column;gap:10px;align-items:center;padding-top:6px}
+.wf-nav i{width:36px;height:36px;border-radius:12px;background:var(--surface-2)}
+.wf-nav i.on{background:var(--blue)}
+.wf-main{display:grid;gap:12px;min-width:0}
+.wf-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.wf-kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:10px 12px}
+.wf-kpi small{display:block;color:var(--text-muted);font-size:11px}
+.wf-kpi b{font-size:18px;font-weight:600}
+.wf-kpi em{font-style:normal;font-size:11px;font-weight:500;margin-left:6px}
+.wf-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;min-width:0}
+.wf-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:13px;font-weight:600}
+.wf-tools{display:flex;gap:6px}
+.wf-tools button{font:inherit;font-size:11px;padding:3px 8px;border-radius:99px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer}
+.wf-tools button[aria-expanded="true"]{background:var(--blue-soft);border-color:transparent;color:var(--blue)}
+.wf-sum{display:none;margin:6px 0 8px;padding:10px 12px;border-radius:12px;background:var(--blue-soft);font-size:12.5px;line-height:1.6}
+.wf-sum.open{display:block}
+.wf-sum ul{margin:6px 0 0;padding-left:18px}
+.wf-sum small{display:block;margin-top:6px;color:var(--text-muted)}
+.wf-side{display:grid;gap:12px;align-content:start}
+.wf-years{display:flex;flex-wrap:wrap;gap:4px}
+.wf-years span{font-size:11px;padding:3px 7px;border-radius:8px;background:var(--surface-2)}
+.wf-years span.on{background:var(--orange);color:#fff}
+.wf svg{display:block;width:100%;height:auto}
+.ring-t{font-size:20px;font-weight:600;fill:var(--text)}
+@media (max-width:1080px){.app{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--border)}.nav{flex-direction:row;flex-wrap:wrap}.side-foot{display:none}.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.wf{grid-template-columns:1fr}.wf-nav{flex-direction:row}.task{grid-template-columns:28px 1fr}.task select,.task input[type=text]{grid-column:2}}
+@media (max-width:640px){main,.top{padding-left:16px;padding-right:16px}.g2,.g3,.g4{grid-template-columns:1fr}.wf-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media print{.side,.top{display:none}.app{display:block}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="brand"><div class="brand-mark" aria-hidden="true"></div><div><b>Income × Housing</b><span>Handoff · แก้ไขได้</span></div></div>
+  <nav class="nav" aria-label="สารบัญ">
+    <a href="#status">สถานะและจุดเริ่มต้น</a>
+    <a href="#data">ข้อมูล 2 ชุด</a>
+    <a href="#db">ฐานข้อมูล</a>
+    <a href="#charts">แท็บและกราฟ</a>
+    <a href="#design">ระบบดีไซน์</a>
+    <a href="#api">API</a>
+    <a href="#tasks">กระดานงาน</a>
+    <a href="#decisions">Decisions</a>
+    <a href="#accept">เกณฑ์ตรวจรับ</a>
+    <a href="#log">บันทึกการเปลี่ยนแปลง</a>
+    <a href="#files">ไฟล์ในแพ็ก</a>
+  </nav>
+  <div class="side-foot"><div>ความคืบหน้างาน <b id="sideProg">0/8</b></div><div class="bar"><i id="sideBar"></i></div></div>
+</aside>
+
+<div class="content">
+<header class="top">
+  <button class="btn" id="btnEdit" aria-pressed="false" title="เปิด/ปิดโหมดแก้ไขข้อความ">✎ แก้ไขเนื้อหา</button>
+  <button class="btn primary" id="btnPrompt">คัดลอก prompt สำหรับ AI</button>
+  <button class="btn" id="btnMd">ส่งออก .md</button>
+  <button class="btn" id="btnHtml">ส่งออก HTML ที่แก้แล้ว</button>
+  <span class="grow"></span>
+  <button class="btn" id="btnReset" title="ล้างการแก้ไขที่เก็บไว้ในเบราว์เซอร์นี้">รีเซ็ต</button>
+  <button class="btn" id="btnTheme" aria-pressed="false" aria-label="สลับโหมดมืด/สว่าง"><span id="themeLabel">โหมดมืด</span></button>
+</header>
+
+<main id="doc" data-saved-at="0">
+<p class="editbanner" role="status">โหมดแก้ไขเปิดอยู่: คลิกข้อความที่มีกรอบประสีส้มเพื่อพิมพ์ · ติ๊กงาน เปลี่ยนสถานะ เพิ่มบันทึกได้เสมอ · ระบบบันทึกในเบราว์เซอร์อัตโนมัติ ใช้ "ส่งออก HTML" เพื่อส่งฉบับที่แก้แล้วต่อ</p>
+
+<section id="status">
+  <h1>income-housing-dashboard</h1>
+  <p class="lead ed">แดชบอร์ดภาษาไทย 3 แท็บ (รายได้ครัวเรือน · ดัชนีราคาบ้าน · รายได้ vs ราคาบ้าน) Python backend + Plotly ข้อมูลอยู่ใน SQLite ช่วงวิเคราะห์ 2554–2566 · อัปเดตล่าสุด 2026-10-23</p>
+  <div class="grid g4">
+    <div class="card stat"><b>2</b><span>ชุดข้อมูล (สสช. รายได้ · ธปท. ดัชนีบ้าน)</span></div>
+    <div class="card stat"><b>11</b><span>ตาราง + 5 view ใน dashboard.db</span></div>
+    <div class="card stat"><b>3</b><span>แท็บ · 11 กราฟหลัก (+1 เสริม)</span></div>
+    <div class="card stat"><b id="statProg">0%</b><span>งานเสร็จ (จากกระดานงาน)</span></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <h3>เริ่มตรงนี้ (3 ขั้น)</h3>
+      <ol class="steps">
+        <li><div>อ่านตามลำดับ <code>docs/01_PROJECT_SPEC.md</code> → <code>02_DATASET_DESCRIPTIONS.md</code> → <code>03_DATABASE_SCHEMA.md</code></div></li>
+        <li><div>ติดตั้งและสร้างฐานข้อมูล
+          <div class="cmd" style="margin-top:8px"><pre id="cmd1">pip install -r requirements-dev.txt
+python etl/build_db.py</pre><button class="btn sm" data-copy="#cmd1">คัดลอก</button></div></div></li>
+        <li><div>ทำกระดานงาน M0–M7 ทีละข้อ ติ๊กเมื่อผ่านเกณฑ์ และบันทึกใน "บันทึกการเปลี่ยนแปลง"</div></li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>กติกาที่ห้ามพลาด</h3>
+      <ul class="ed" style="margin:0;padding-left:20px;display:grid;gap:6px">
+        <li>เชื่อมกราฟทุกอันในแท็บเดียวกัน: เลือกภาคหรือปี → กราฟ KPI สรุป ตาราง อัปเดตพร้อมกัน</li>
+        <li>ฟ้า = รายได้ · ส้ม = ราคาบ้าน ทุกกราฟทั้งสองโหมด</li>
+        <li>ราคาบ้านเป็น <b>ดัชนี</b> ห้ามเขียนว่า "แพงที่สุด" "ค่าครองชีพ" หรือ "ครอบคลุมทุกประเภทบ้าน"</li>
+        <li>ไม่ interpolate รายได้ปีที่ไม่มีรอบสำรวจ · ปีทุกตัวเป็น พ.ศ.</li>
+        <li>ภาคเหนือ/อีสาน: "รวมทุกประเภท" = "บ้านเดี่ยว" ห้ามแสดงเป็นสองข้อมูลอิสระ</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="data">
+  <h2>ข้อมูล 2 ชุด</h2>
+  <p class="lead">รายละเอียดครบอยู่ใน <code>docs/02_DATASET_DESCRIPTIONS.md</code> ด้านล่างคือสิ่งที่ต้องรู้ก่อนเขียนโค้ด</p>
+  <div class="grid g2">
+    <div class="card">
+      <h3>รายได้เฉลี่ยต่อเดือนของครัวเรือน <span class="chip blue">สสช.</span></h3>
+      <p style="margin:0 0 10px;color:var(--text-muted)">144 แถว = 6 พื้นที่ × 3 ประเภทเขต × 8 รอบ (2554, 2556 … 2568) · บาท/ครัวเรือน/เดือน · ราคาตามปี</p>
+      <ul style="margin:0;padding-left:20px;display:grid;gap:4px">
+        <li>5 ส่วนย่อยรวมกันเท่ากับ <code>MONTHLY_INCOME</code> (คลาดไม่เกิน 2 บาท)</li>
+        <li>join ด้วย <code>CODE_REGION</code>/<code>CODE_AREA</code> เท่านั้น (ชื่อสะกดเปลี่ยนตามปี)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>ดัชนีราคาที่อยู่อาศัย <span class="chip orange">ธปท.</span></h3>
+      <p style="margin:0 0 10px;color:var(--text-muted)">16 series × 180 เดือน (ม.ค. 2554 – ธ.ค. 2568) · ฐาน 2554 = 100 · ปรับปรุงล่าสุด 30 ก.ย. 2569</p>
+      <ul style="margin:0;padding-left:20px;display:grid;gap:4px">
+        <li>ประเภท: รวมทุกประเภท · บ้านเดี่ยวพร้อมที่ดิน · ทาวน์เฮ้าส์พร้อมที่ดิน (4 พื้นที่)</li>
+        <li>Hedonic regression เฉลี่ยเคลื่อนที่ 3 เดือน · เพิ่มสถาบันการเงินเฉพาะกิจ ม.ค. 2566</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>ข้อควรระวังสำคัญ</h3>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:84px">รหัส</th><th>เรื่อง</th><th>วิธีรับมือ</th></tr></thead>
+      <tbody class="ed">
+        <tr><td><span class="chip warn">Q-H1</span></td><td>ภาคเหนือและอีสาน: ดัชนี "รวมทุกประเภท" เท่ากับ "บ้านเดี่ยว" ทุกเดือน (180/180)</td><td>ซ่อน/ติดป้ายเมื่อเทียบประเภทบ้านสองภาคนี้</td></tr>
+        <tr><td><span class="chip warn">Q-H3</span></td><td>หมายเหตุ ธปท. กล่าวถึงอาคารชุด แต่ชีตไม่มี series อาคารชุด</td><td>ไม่ใส่คอนโด ไม่เขียนว่าครอบคลุมทุกประเภท</td></tr>
+        <tr><td><span class="chip warn">Q-H6</span></td><td>ดัชนีบอกการเปลี่ยนแปลง ไม่ใช่ระดับราคา</td><td>จัดอันดับด้วย CAGR/YoY ไม่ใช้คำว่า "แพงที่สุด"</td></tr>
+        <tr><td><span class="chip warn">Q-I2</span></td><td>รายได้มีทุก 2 ปี</td><td>ไม่ interpolate · ต่อจุดด้วยเส้นตรง</td></tr>
+        <tr><td><span class="chip warn">Q-X1</span></td><td>นิยาม กทม.+ปริมณฑล ของ สสช. (4 จังหวัด) อาจไม่ตรงกับของ ธปท.</td><td>ใส่หมายเหตุใต้กราฟ Tab 3 · ตรวจกับ ธปท. (D3)</td></tr>
+        <tr><td><span class="chip warn">Q-X2/3</span></td><td>ทั้งคู่เป็นราคาตามปี · ไม่มีราคาบ้านเป็นบาท</td><td>เทียบได้เฉพาะอัตราเติบโต ห้ามคำนวณ "กี่ปีของรายได้"</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="db">
+  <h2>ฐานข้อมูล <code>data/dashboard.db</code></h2>
+  <p class="lead">สร้างใหม่ทั้งหมดด้วย <code>python etl/build_db.py</code> (มี self-test) แผนภาพ ER และ SQL ต่อกราฟอยู่ใน <code>docs/03_DATABASE_SCHEMA.md</code></p>
+  <div class="grid g3">
+    <div class="card"><h3>มิติ</h3><div class="legend" style="display:grid;gap:6px">
+      <span><b style="color:var(--text)">dim_region</b> 6 · รหัสเดียวกับ สสช. 0–5</span>
+      <span><b style="color:var(--text)">dim_year</b> 15 · <b style="color:var(--text)">dim_month</b> 180</span>
+      <span><b style="color:var(--text)">dim_area_type</b> 3 · <b style="color:var(--text)">dim_property_type</b> 3</span>
+      <span><b style="color:var(--text)">dim_income_source</b> 8 · <b style="color:var(--text)">ref_province_region</b> 76</span></div></div>
+    <div class="card"><h3>ข้อเท็จจริง</h3><div class="legend" style="display:grid;gap:6px">
+      <span><b style="color:var(--text)">fact_income</b> 144 · กว้างตาม CSV</span>
+      <span><b style="color:var(--text)">fact_hpi_monthly</b> 2,880</span>
+      <span><b style="color:var(--text)">fact_hpi_annual</b> 240 · <code>index_mean12</code> (ค่าเริ่มต้น) และ <code>index_bot_qtr_end</code></span></div></div>
+    <div class="card"><h3>View ต่อกราฟ</h3><div class="legend" style="display:grid;gap:6px">
+      <span><b style="color:var(--text)">v_income_long</b> → treemap</span>
+      <span><b style="color:var(--text)">v_income_index</b> → แนวโน้ม</span>
+      <span><b style="color:var(--text)">v_income_urban_rural_gap</b> → heat map</span>
+      <span><b style="color:var(--text)">v_hpi_yoy</b> → แผนที่/heat map ราคาบ้าน</span>
+      <span><b style="color:var(--text)">v_price_to_income</b> → Tab 3</span></div></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>สูตรที่ทุก endpoint ต้องใช้ตรงกัน</h3>
+    <div class="tbl"><table><tbody>
+      <tr><td style="width:230px"><b>CAGR</b></td><td><code>((ปลาย ÷ ต้น)^(1 ÷ ปี) − 1) × 100</code> ใช้บาทหรือดัชนีได้ผลเท่ากัน · คำนวณใน Python</td></tr>
+      <tr><td><b>ดัชนีราคา ÷ รายได้</b></td><td><code>100 × (HPI_t ÷ HPI_ต้น) ÷ (Inc_t ÷ Inc_ต้น)</code> · เกิน 100 = ราคาโตเร็วกว่ารายได้ = ซื้อยากขึ้น</td></tr>
+      <tr><td><b>ช่องว่างเมือง-ชนบท</b></td><td><code>(ในเขต − นอกเขต) ÷ นอกเขต × 100</code></td></tr>
+      <tr><td><b>ดัชนีราคาบ้านรายปี</b></td><td>เฉลี่ย 12 เดือน (2554 ≈ 100.0) · ทางเลือกตามหมายเหตุ ธปท.: เฉลี่ยเดือน มี.ค./มิ.ย./ก.ย./ธ.ค. (D2)</td></tr>
+    </tbody></table></div>
+  </div>
+</section>
+
+<section id="charts">
+  <h2>แท็บและกราฟ</h2>
+  <p class="lead">คลิกแถวของกราฟเพื่อดูว่าการคลิกกราฟนั้น <b>ตั้งค่าอะไร</b> และ <b>อัปเดตกราฟไหนบ้าง</b> (แถวสีฟ้า = ต้นทาง · แถวสีส้ม = ปลายทาง)</p>
+  <div class="seg" id="tabSeg" role="group" aria-label="เลือกแท็บ">
+    <button aria-pressed="true" data-tab="1">Tab 1 · รายได้</button>
+    <button aria-pressed="false" data-tab="2">Tab 2 · ราคาบ้าน</button>
+    <button aria-pressed="false" data-tab="3">Tab 3 · เปรียบเทียบ</button>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <p id="tabQ" style="margin:0 0 12px;color:var(--text-muted)"></p>
+    <div class="tbl"><table>
+      <thead><tr><th style="width:56px">รหัส</th><th>กราฟ</th><th>ตอบ</th><th>คลิกแล้วตั้ง</th><th>อัปเดต</th></tr></thead>
+      <tbody id="chartRows"></tbody>
+    </table></div>
+    <p id="linkNote" style="margin:12px 0 0;font-size:13px;color:var(--text-muted)"></p>
+  </div>
+</section>
+
+<section id="design">
+  <h2>ระบบดีไซน์ (Modern · มืด/สว่าง · เพิ่มสีฟ้า)</h2>
+  <p class="lead">หน้านี้ใช้ tokens ชุดเดียวกับแดชบอร์ด กดปุ่ม "โหมดมืด/สว่าง" ด้านบนเพื่อดูทั้งสองโหมด ค่าสีด้านล่างอ่านจากโหมดปัจจุบัน</p>
+  <div class="card">
+    <div class="swatches" id="swatches"></div>
+    <div class="legend" style="margin-top:14px">
+      <span><i class="dot" style="background:var(--r1)"></i>กทม.+ปริมณฑล</span>
+      <span><i class="dot" style="background:var(--r2)"></i>กลาง</span>
+      <span><i class="dot" style="background:var(--r3)"></i>เหนือ</span>
+      <span><i class="dot" style="background:var(--r4)"></i>อีสาน</span>
+      <span><i class="dot" style="background:var(--r5)"></i>ใต้</span>
+      <span><i class="dot" style="background:var(--r0)"></i>ทั่วประเทศ (เส้นประ)</span>
+    </div>
+    <div class="cmd" style="margin-top:14px"><pre id="cssVars"></pre><button class="btn sm" data-copy="#cssVars">คัดลอก CSS</button></div>
+  </div>
+
+  <h3 style="margin:22px 0 10px">ตัวอย่างโครงหน้า (Tab 3 · ไม่ใช่หน้าจริง · ตัวเลขเป็นของจริงระดับประเทศ)</h3>
+  <div class="wf" aria-label="ตัวอย่างโครงหน้าแดชบอร์ด">
+    <div class="wf-nav" aria-hidden="true"><i></i><i></i><i class="on"></i><i style="margin-top:auto"></i></div>
+    <div class="wf-main">
+      <div class="wf-kpis">
+        <div class="wf-kpi"><small>ดัชนีราคา ÷ รายได้</small><b>134.2</b><em style="color:var(--negative)">ซื้อยากขึ้น</em></div>
+        <div class="wf-kpi"><small>CAGR รายได้</small><b>1.87%</b><em style="color:var(--blue)">/ปี</em></div>
+        <div class="wf-kpi"><small>CAGR ราคาบ้าน</small><b>4.40%</b><em style="color:var(--orange)">/ปี</em></div>
+        <div class="wf-kpi"><small>ช่องว่าง CAGR</small><b>2.53</b><em>จุด</em></div>
+      </div>
+      <div class="wf-card">
+        <div class="wf-head"><span>ดัชนีรายได้ vs ดัชนีราคาบ้าน (ทั้งประเทศ, 2554 = 100)</span>
+          <span class="wf-tools"><button data-sum="wfSum" aria-expanded="false">✦ สรุป</button><button type="button">▤ ตาราง</button><button type="button">⤓ CSV</button></span></div>
+        <div class="wf-sum" id="wfSum" role="region" aria-live="polite">
+          <b>ราคาบ้านโตเร็วกว่ารายได้ 34% เทียบปี 2554 (ทั่วประเทศ)</b>
+          <ul><li>ราคาบ้านโต 4.40%/ปี เทียบรายได้ 1.87%/ปี ช่องว่าง 2.53 จุด</li><li>ยากขึ้นมากสุดที่กทม.+ปริมณฑล (ดัชนี 175.5) น้อยสุดที่กลาง (120.8)</li></ul>
+          <small>ข้อควรระวัง: ดัชนีบอกการเปลี่ยนแปลง ไม่ใช่ระดับราคา · รายได้มีเฉพาะปีรอบสำรวจ</small>
+        </div>
+        <svg viewBox="0 0 520 190" role="img" aria-label="เส้นดัชนีรายได้สีฟ้าและดัชนีราคาบ้านสีส้ม 2554 ถึง 2566">
+          <g stroke="var(--border)" stroke-width="1">
+          <line x1="44" y1="165.0" x2="510" y2="165.0"/>
+          <line x1="44" y1="116.7" x2="510" y2="116.7"/>
+          <line x1="44" y1="68.3" x2="510" y2="68.3"/>
+          <line x1="44" y1="20.0" x2="510" y2="20.0"/>
+          </g>
+          <g fill="var(--text-muted)" font-size="11">
+          <text x="38" y="169.0" text-anchor="end">100</text>
+          <text x="38" y="120.7" text-anchor="end">125</text>
+          <text x="38" y="72.3" text-anchor="end">150</text>
+          <text x="38" y="24.0" text-anchor="end">175</text>
+          <text x="60.0" y="184" text-anchor="middle">2554</text>
+          <text x="131.0" y="184" text-anchor="middle">2556</text>
+          <text x="202.0" y="184" text-anchor="middle">2558</text>
+          <text x="273.0" y="184" text-anchor="middle">2560</text>
+          <text x="344.0" y="184" text-anchor="middle">2562</text>
+          <text x="415.0" y="184" text-anchor="middle">2564</text>
+          <text x="486.0" y="184" text-anchor="middle">2566</text>
+          </g>
+          <polygon points="60.0,165.0 131.0,143.7 202.0,106.1 273.0,86.8 344.0,70.5 415.0,53.4 486.0,34.1 486.0,116.8 415.0,130.8 344.0,141.9 273.0,134.1 202.0,134.4 131.0,148.7 60.0,165.0" fill="var(--orange)" opacity=".10"/>
+          <polyline points="60.0,165.0 131.0,143.7 202.0,106.1 273.0,86.8 344.0,70.5 415.0,53.4 486.0,34.1" fill="none" stroke="var(--orange)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="60.0,165.0 131.0,148.7 202.0,134.4 273.0,134.1 344.0,141.9 415.0,130.8 486.0,116.8" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="486" y="22" fill="var(--orange)" font-size="12" font-weight="600" text-anchor="end">ราคาบ้าน 167.7</text>
+          <text x="486" y="137" fill="var(--blue)" font-size="12" font-weight="600" text-anchor="end">รายได้ 124.9</text>
+        </svg>
+      </div>
+    </div>
+    <div class="wf-side">
+      <div class="wf-card"><div class="wf-head"><span>Insights</span></div>
+        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.6">สรุปทั้งแท็บ 3–5 ข้อ สร้างจากเทมเพลตตามตัวกรองปัจจุบัน</div></div>
+      <div class="wf-card"><div class="wf-head"><span>เลือกปี</span></div>
+        <div class="wf-years"><span>2554</span><span>2556</span><span>2558</span><span>2560</span><span>2562</span><span>2564</span><span class="on">2566</span><span>2568</span></div></div>
+      <div class="wf-card"><div class="wf-head"><span>ภาคที่ราคาโตเร็วกว่ารายได้</span></div>
+        <svg viewBox="0 0 120 120" role="img" aria-label="5 จาก 5 ภาค"><circle cx="60" cy="60" r="46" fill="none" stroke="var(--surface-2)" stroke-width="14"/><circle cx="60" cy="60" r="46" fill="none" stroke="var(--blue)" stroke-width="14" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="0" transform="rotate(-90 60 60)"/><text class="ring-t" x="60" y="68" text-anchor="middle">5/5</text></svg></div>
+    </div>
+  </div>
+  <p style="font-size:13px;color:var(--text-muted);margin:10px 0 0">ปุ่ม <b>✦ สรุป</b> ในตัวอย่างกดได้ · ทุกกราฟของแดชบอร์ดจริงต้องมีปุ่มนี้ สรุปอัปเดตตามตัวกรอง · อ้างอิงภาพ: แดชบอร์ดมืดโทนส้มที่ผู้ใช้แนบ (เมนูซ้าย การ์ดตัวเลข กราฟพื้นที่ โดนัท แผงขวา ตารางล่าง)</p>
+</section>
+
+<section id="api">
+  <h2>API</h2>
+  <p class="lead">หนึ่งคำขอต่อแท็บ คืนทุกกราฟ KPI สรุป ตาราง ที่มาจากตัวกรองชุดเดียวกัน</p>
+  <div class="card">
+    <div class="cmd"><pre id="apiTxt">GET /api/meta
+GET /api/tab/{1|2|3}?year=2566&y0=2554&y1=2566&region=&area=0&pt=1&metric=&grain=&theme=dark
+GET /api/export/{tab}/{chart}.csv?…     (UTF-8 BOM)
+GET /healthz        GET /   (หน้าเว็บ)
+
+response: { filters, headline, kpis[], ring, charts{ id: { figure(plotly json), summary{headline,bullets[],caution}, table, empty } }, insights[], notes[], as_of }
+ตัวกรองผิด → HTTP 422 พร้อมข้อความไทย</pre><button class="btn sm" data-copy="#apiTxt">คัดลอก</button></div>
+  </div>
+</section>
+
+<section id="tasks">
+  <h2>กระดานงาน</h2>
+  <p class="lead">ติ๊กเมื่อผ่านเกณฑ์ เปลี่ยนสถานะ ใส่ผู้รับผิดชอบ และเพิ่มงานใหม่ได้ ความคืบหน้าด้านซ้ายและ prompt สำหรับ AI คนถัดไปคำนวณจากรายการนี้</p>
+  <div class="card">
+    <div id="taskList">
+      <div class="task"><input type="checkbox" aria-label="เสร็จแล้ว"><div><div class="t-title ed">M0 · ตั้งโปรเจกต์ ติดตั้ง และรัน ETL บนเครื่องใหม่</div><div class="t-ok ed">ผ่านเมื่อ: python etl/build_db.py จบด้วย &quot;OK database written&quot;</div></div><select aria-label="สถานะ"><option selected>ยังไม่เริ่ม</option><option>กำลังทำ</option><option>เสร็จ</option><option>ติดปัญหา</option></select><input type="text" placeholder="ผู้รับผิดชอบ" aria-label="ผู้รับผิดชอบ"></div>
+      <div class="task"><input type="checkbox" aria-label="เสร็จแล้ว"><div><div class="t-title ed">M1 · ชั้นข้อมูล (db.py, filters.py, metrics.py)</div><div class="t-ok ed">ผ่านเมื่อ: tests/test_metrics.py ผ่าน CAGR และ rebase ตรง expected_values.json</div></div><select aria-label="สถานะ"><option selected>ยังไม่เริ่ม</option><option>กำลังทำ</option><option>เสร็จ</option><option>ติดปัญหา</option></select><input type="text" placeholder="ผู้รับผิดชอบ" aria-label="ผู้รับผิดชอบ"></div>
+      <div class="task"><input type="checkbox" aria-label="เสร็จแล้ว"><div><div class="t-title ed">M2 · API Tab 1 + figures + summaries</div><div class="t-ok ed">ผ่านเมื่อ: /api/tab/1 คืน 4 กราฟ KPI ครบ สรุปตรงตัวอย่างในสเปกหัวข้อ 8</div></div><select aria-label="สถานะ"><option selected>ยังไม่เริ่ม</option><option>กำลังทำ</option><option>เสร็จ</option><option>ติดปัญหา</option></select><input type="text" placeholder="ผู้รับผิดชอบ" aria-label="ผู้รับผิดชอบ"></div>
+      <div class="task"><input type="checkbox" aria-label="เสร็จแล้ว"><div><div class="t-title ed">M3 · โครงหน้าเว็บ: เมนู แถบบน ธีมมืด/สว่าง tokens ชิปตัวกรอง</div><div class="t-ok ed">ผ่านเมื่อ: สลับธีมไม่กะพริบ กราฟเปลี่ยนสี คอนทราสต์ผ่าน AA ทั้งสองโหมด</div></div><select aria-label="สถานะ"><option selected>ยังไม่เริ่ม</option><option>กำลังทำ</option><option>เสร็จ</option><option>ติดปัญหา</option></select><input type="text" placeholder="ผู้รับผิดชอบ" aria-label="ผู้รับผิดชอบ"></div>
+      <div class="task"><input type="checkbox" aria-label="เสร็จแล้ว"><div><div class="t-title ed">M4 · Tab 1 ครบ: เชื่อมกราฟ ปุ่มสรุป ตาราง CSV</div><div class="t-ok ed">ผ่านเมื่อ: คลิกภาค/ปีแล้วทุกกราฟ KPI สรุป ตาราง อัปเดตตามกติกาเชื่อมกราฟ</div></div><select aria-label="สถานะ"><option selected>ยังไม่เริ่ม</option><option>กำลังทำ</option><option>เสร็จ</option><option>ติดปัญหา</option></select><input type="text" placeholder="ผู้รับผิดชอบ" aria-label="ผู้รับผิดชอบ"></div>
+      <div class="task"><input type="checkbox" aria-label="เสร็จแล้ว"><div><div class="t-title ed">M5 · Tab 2 ดัชนีราคาบ้าน</div><div class="t-ok ed">ผ่านเมื่อ: ทาวน์เฮ้าส์ + เหนือ/อีสาน แสดงข้อความไม่มีข้อมูล ไม่ error</div></div><select aria-label="สถานะ"><option selected>ยังไม่เริ่ม</option><option>กำลังทำ</option><option>เสร็จ</option><option>ติดปัญหา</option></select><input type="text" placeholder="ผู้รับผิดชอบ" aria-label="ผู้รับผิดชอบ"></div>
+      <div class="task"><input type="checkbox" aria-label="เสร็จแล้ว"><div><div class="t-title ed">M6 · Tab 3 เปรียบเทียบรายได้กับราคาบ้าน</div><div class="t-ok ed">ผ่านเมื่อ: CAGR และดัชนีราคา÷รายได้ตรงตารางตรวจรับ rebase ถูกเมื่อเริ่มช่วงที่ 2558</div></div><select aria-label="สถานะ"><option selected>ยังไม่เริ่ม</option><option>กำลังทำ</option><option>เสร็จ</option><option>ติดปัญหา</option></select><input type="text" placeholder="ผู้รับผิดชอบ" aria-label="ผู้รับผิดชอบ"></div>
+      <div class="task"><input type="checkbox" aria-label="เสร็จแล้ว"><div><div class="t-title ed">M7 · ขัดเกลา: a11y เต็ม responsive สถานะว่าง ประสิทธิภาพ README</div><div class="t-ok ed">ผ่านเมื่อ: ผ่านรายการตรวจก่อนส่งมอบทุกข้อ</div></div><select aria-label="สถานะ"><option selected>ยังไม่เริ่ม</option><option>กำลังทำ</option><option>เสร็จ</option><option>ติดปัญหา</option></select><input type="text" placeholder="ผู้รับผิดชอบ" aria-label="ผู้รับผิดชอบ"></div>
+    </div>
+    <div style="margin-top:14px"><button class="btn" id="btnAddTask">+ เพิ่มงาน</button></div>
+  </div>
+</section>
+
+<section id="decisions">
+  <h2>Decisions และคำถามที่ยังเปิดอยู่</h2>
+  <p class="lead">ข้อที่เป็น "เปิดอยู่" ให้ใช้ค่าที่สมมติไว้ก่อน แล้วถามผู้ใช้ตอนส่งมอบ</p>
+  <div class="card"><div class="tbl"><table>
+    <thead><tr><th style="width:52px">รหัส</th><th>เรื่อง</th><th>ค่าที่สมมติไว้</th><th>คำตอบ/หมายเหตุ</th><th style="width:170px">สถานะ</th></tr></thead>
+    <tbody id="decRows" class="dec">
+      <tr><td><b>D1</b></td><td class="ed">ปลายช่วงวิเคราะห์</td><td class="ed">2566 (ผู้ใช้ระบุ) เลือก 2568 ได้</td><td class="ed"></td><td><select aria-label="สถานะ"><option>เปิดอยู่</option><option selected>ใช้ค่าที่สมมติไว้</option><option>ผู้ใช้ตัดสินใจแล้ว</option></select></td></tr>
+      <tr><td><b>D2</b></td><td class="ed">วิธีรวมดัชนีรายเดือนเป็นรายปี</td><td class="ed">เฉลี่ย 12 เดือน (ทางเลือก: เฉลี่ยเดือน มี.ค./มิ.ย./ก.ย./ธ.ค. ต่างราว 0.015 จุด)</td><td class="ed"></td><td><select aria-label="สถานะ"><option>เปิดอยู่</option><option selected>ใช้ค่าที่สมมติไว้</option><option>ผู้ใช้ตัดสินใจแล้ว</option></select></td></tr>
+      <tr><td><b>D3</b></td><td class="ed">นิยามกทม.+ปริมณฑล ของ สสช. กับ ธปท.</td><td class="ed">ถือว่าเทียบได้โดยประมาณ + หมายเหตุใต้กราฟ</td><td class="ed"></td><td><select aria-label="สถานะ"><option selected>เปิดอยู่</option><option>ใช้ค่าที่สมมติไว้</option><option>ผู้ใช้ตัดสินใจแล้ว</option></select></td></tr>
+      <tr><td><b>D4</b></td><td class="ed">การติดตั้งใช้งาน</td><td class="ed">รันบนเครื่อง (uvicorn) · GitHub Pages รัน Python ไม่ได้ ต้องเลือก static export หรือโฮสต์แบ็กเอนด์</td><td class="ed"></td><td><select aria-label="สถานะ"><option selected>เปิดอยู่</option><option>ใช้ค่าที่สมมติไว้</option><option>ผู้ใช้ตัดสินใจแล้ว</option></select></td></tr>
+      <tr><td><b>D5</b></td><td class="ed">เฟรมเวิร์กหน้าเว็บ</td><td class="ed">FastAPI + vanilla JS/Alpine + Plotly.js (Dash ได้ถ้าคงสเปกดีไซน์)</td><td class="ed"></td><td><select aria-label="สถานะ"><option>เปิดอยู่</option><option selected>ใช้ค่าที่สมมติไว้</option><option>ผู้ใช้ตัดสินใจแล้ว</option></select></td></tr>
+      <tr><td><b>D6</b></td><td class="ed">ที่มาและลิงก์ไฟล์ดัชนีบ้าน</td><td class="ed">ธปท. EC_EI_008_S4 (ยังไม่มีลิงก์ต้นทาง)</td><td class="ed"></td><td><select aria-label="สถานะ"><option selected>เปิดอยู่</option><option>ใช้ค่าที่สมมติไว้</option><option>ผู้ใช้ตัดสินใจแล้ว</option></select></td></tr>
+      <tr><td><b>D7</b></td><td class="ed">Treemap ใน Tab 2</td><td class="ed">ไม่ทำใน MVP (ขนาดกล่องไม่ใช่ปริมาณที่บวกกันได้)</td><td class="ed"></td><td><select aria-label="สถานะ"><option>เปิดอยู่</option><option selected>ใช้ค่าที่สมมติไว้</option><option>ผู้ใช้ตัดสินใจแล้ว</option></select></td></tr>
+      <tr><td><b>D8</b></td><td class="ed">ชื่อโปรเจกต์/โลโก้ในแถบเมนู</td><td class="ed">Income × Housing (ชั่วคราว)</td><td class="ed"></td><td><select aria-label="สถานะ"><option>เปิดอยู่</option><option selected>ใช้ค่าที่สมมติไว้</option><option>ผู้ใช้ตัดสินใจแล้ว</option></select></td></tr>
+    </tbody></table></div></div>
+</section>
+
+<section id="accept">
+  <h2>เกณฑ์ตรวจรับ</h2>
+  <p class="lead">ค่าอ้างอิงมาจาก <code>data/expected_values.json</code> (ช่วง 2554→2566, ประเภทเขต "รวม", ราคาบ้าน "รวมทุกประเภท") ใช้เป็น test ได้ทันที</p>
+  <div class="card"><div class="tbl"><table>
+    <thead><tr><th>ภาค</th><th>CAGR รายได้ (%/ปี)</th><th>CAGR ราคาบ้าน (%/ปี)</th><th>ดัชนีราคา÷รายได้ 2566</th><th>ช่องว่างเมือง-ชนบท 2566 (%)</th></tr></thead>
+    <tbody>
+      <tr><td><b>ทั่วประเทศ</b> <span class="chip">TH</span></td><td>1.87</td><td>4.40</td><td>134.2</td><td>33.8</td></tr>
+      <tr><td><b>กทม.+ปริมณฑล</b> <span class="chip">BMR</span></td><td>−0.52</td><td>4.25</td><td>175.5</td><td>9.0</td></tr>
+      <tr><td><b>กลาง</b> <span class="chip">CEN</span></td><td>3.15</td><td>4.79</td><td>120.8</td><td>14.6</td></tr>
+      <tr><td><b>เหนือ</b> <span class="chip">NOR</span></td><td>2.75</td><td>5.06</td><td>130.5</td><td>26.2</td></tr>
+      <tr><td><b>อีสาน</b> <span class="chip">NES</span></td><td>1.78</td><td>4.73</td><td>140.8</td><td>25.4</td></tr>
+      <tr><td><b>ใต้</b> <span class="chip">SOU</span></td><td>0.36</td><td>3.21</td><td>139.9</td><td>15.5</td></tr>
+    </tbody></table></div></div>
+  <div class="card" style="margin-top:16px"><h3>รายการตรวจก่อนส่งมอบ</h3>
+    <div id="checkList" style="display:grid;gap:8px">
+      <div style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" aria-label="ผ่านแล้ว" style="width:18px;height:18px;accent-color:var(--blue);margin-top:5px"><span class="ed">ทุกกราฟมี 3 ปุ่ม (สรุป/ตาราง/CSV) และสรุปเปลี่ยนตามตัวกรอง</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" aria-label="ผ่านแล้ว" style="width:18px;height:18px;accent-color:var(--blue);margin-top:5px"><span class="ed">ไม่มีตัวเลขที่เขียนตายตัวในหน้าเว็บ ทุกตัวมาจาก API</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" aria-label="ผ่านแล้ว" style="width:18px;height:18px;accent-color:var(--blue);margin-top:5px"><span class="ed">สลับธีมแล้วกราฟ แผนที่ ตาราง ป้าย และ tooltip อ่านชัดทั้งสองโหมด</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" aria-label="ผ่านแล้ว" style="width:18px;height:18px;accent-color:var(--blue);margin-top:5px"><span class="ed">ใช้คีย์บอร์ดเลือกตัวกรอง สลับแท็บ เปิด/ปิดสรุปได้ มีวงโฟกัสเห็นชัด</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" aria-label="ผ่านแล้ว" style="width:18px;height:18px;accent-color:var(--blue);margin-top:5px"><span class="ed">ไม่ใช้สีเป็นตัวบอกความหมายเพียงอย่างเดียว (มีป้ายตัวเลข ลาย หรือข้อความ)</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" aria-label="ผ่านแล้ว" style="width:18px;height:18px;accent-color:var(--blue);margin-top:5px"><span class="ed">ข้อความไม่อ้างเกินข้อมูล: ไม่มีคำว่า &quot;ค่าครองชีพ&quot; &quot;ราคาบ้านเฉลี่ย&quot; &quot;แพงที่สุด&quot; และไม่เขียนว่าครอบคลุมทุกประเภทบ้าน</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" aria-label="ผ่านแล้ว" style="width:18px;height:18px;accent-color:var(--blue);margin-top:5px"><span class="ed">ทุกแท็บโหลดเร็วกว่า 1 วินาทีบนเครื่องผู้พัฒนา</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-start"><input type="checkbox" aria-label="ผ่านแล้ว" style="width:18px;height:18px;accent-color:var(--blue);margin-top:5px"><span class="ed">pytest ผ่านทั้งหมด</span></div>
+    </div></div>
+</section>
+
+<section id="log">
+  <h2>บันทึกการเปลี่ยนแปลง</h2>
+  <p class="lead">AI หรือคนที่ทำต่อ ให้เพิ่มบรรทัดใหม่ทุกครั้งที่ปิดงาน: ทำอะไร ไฟล์ไหน ผลทดสอบ เรื่องที่ยังค้าง</p>
+  <div class="card">
+    <ul id="logList" style="list-style:none;margin:0;padding:0;display:grid;gap:10px">
+      <li class="logi"><span class="chip blue">2026-10-23</span> <span class="ed">สร้างแพ็กส่งต่อ: schema.sql, ETL, regions.geojson, เอกสาร 01–03 · ETL self-test ผ่าน (fact_income 144 · fact_hpi_monthly 2,880 · fact_hpi_annual 240)</span></li>
+    </ul>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="btnAddLog">+ เพิ่มบันทึก</button></div>
+  </div>
+</section>
+
+<section id="files">
+  <h2>ไฟล์ในแพ็ก</h2>
+  <div class="card"><div class="tbl"><table><tbody>
+    <tr><td><code>docs/01_PROJECT_SPEC.md</code></td><td>สเปกเต็ม: เป้าหมาย แท็บ กราฟ การเชื่อมกราฟ ดีไซน์ API แผนงาน</td></tr>
+    <tr><td><code>docs/02_DATASET_DESCRIPTIONS.md</code></td><td>คำอธิบายข้อมูลแต่ละชุด พจนานุกรมคอลัมน์ Data quality</td></tr>
+    <tr><td><code>docs/03_DATABASE_SCHEMA.md</code></td><td>ER สูตร query ต่อกราฟ ขั้นตอน ETL DDL เต็ม</td></tr>
+    <tr><td><code>sql/schema.sql</code> · <code>etl/build_db.py</code></td><td>สร้าง <code>data/dashboard.db</code> + self-test + <code>expected_values.json</code></td></tr>
+    <tr><td><code>etl/build_regions_geojson.py</code> · <code>static/regions.geojson</code></td><td>รูป 5 ภาคสำหรับ choropleth (มีไฟล์ให้แล้ว)</td></tr>
+    <tr><td><code>data/raw/</code> · <code>data/ref/</code></td><td>ไฟล์ดิบ 2 ชุด + ตารางจังหวัด→ภาค</td></tr>
+    <tr><td><code>HANDOFF.html</code></td><td>หน้านี้ แก้ไขได้ ส่งออกเป็น HTML/Markdown ได้</td></tr>
+  </tbody></table></div></div>
+</section>
+</main>
+</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var doc = $('#doc');
+  var KEY = 'ihd-handoff-v1';
+
+  /* ---------- theme ---------- */
+  function themeNow() { return document.documentElement.getAttribute('data-theme'); }
+  function paintTheme() {
+    var dark = themeNow() === 'dark';
+    $('#themeLabel').textContent = dark ? 'โหมดมืด' : 'โหมดสว่าง';
+    $('#btnTheme').setAttribute('aria-pressed', String(!dark));
+    renderTokens();
+  }
+  $('#btnTheme').addEventListener('click', function () {
+    var t = themeNow() === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('ihd-theme', t); } catch (e) {}
+    paintTheme();
+  });
+
+  /* ---------- design tokens panel ---------- */
+  var TOKENS = [['--bg', 'พื้นหลังหน้า'], ['--surface', 'การ์ด'], ['--surface-2', 'ช่องกรอก/ชิป'], ['--border', 'เส้นขอบ/กริด'],
+    ['--text', 'ข้อความหลัก'], ['--text-muted', 'ข้อความรอง/แกน'], ['--blue', 'รายได้ · ปุ่มหลัก'], ['--blue-strong', 'hover ปุ่มหลัก'],
+    ['--orange', 'ราคาบ้าน · จุดเน้น'], ['--positive', 'เพิ่มขึ้น/ดี'], ['--negative', 'ลดลง/เสี่ยง'], ['--focus', 'วงโฟกัสคีย์บอร์ด']];
+  function renderTokens() {
+    var cs = getComputedStyle(document.documentElement);
+    $('#swatches').innerHTML = TOKENS.map(function (t) {
+      var v = cs.getPropertyValue(t[0]).trim();
+      return '<div class="sw"><i style="background:var(' + t[0] + ')"></i><div><b>' + t[0] + '</b>' + v + ' · ' + t[1] + '</div></div>';
+    }).join('');
+    var extra = ['--blue-soft', '--orange-soft', '--warning', '--r1', '--r2', '--r3', '--r4', '--r5', '--r0'];
+    var lines = TOKENS.concat(extra.map(function (n) { return [n, '']; })).map(function (t) { return '  ' + t[0] + ': ' + cs.getPropertyValue(t[0]).trim() + ';'; });
+    $('#cssVars').textContent = 'html[data-theme="' + themeNow() + '"] {\n' + lines.join('\n') + '\n}';
+  }
+
+  /* ---------- chart explorer ---------- */
+  var TABS = {
+    1: { q: 'โครงสร้างและทิศทางรายได้ครัวเรือนไทย ความเหลื่อมล้ำทางพื้นที่ และการพึ่งพาแหล่งรายได้ (สสช.)', note: 'ตัวกรองประเภทเขตมีผลกับ 1A 1B 1C KPI ตาราง · 1D ไม่ขึ้นกับตัวกรองเขต',
+      rows: [
+        ['1A', 'Choropleth รายได้รายภาค', 'ใครรายได้สูง/ต่ำ', 'ภาค', ['1B', '1C', '1D', 'KPI', 'ตาราง']],
+        ['1B', 'Treemap แหล่งที่มาของรายได้', 'พึ่งแหล่งไหนมาก', 'ภาค', ['1A', '1C', '1D', 'KPI', 'ตาราง']],
+        ['1C', 'Linear trend รายได้ตามปี', 'โตหรือหดตัว', 'ปี · ภาค', ['1A', '1B', '1D', 'KPI', 'ตาราง']],
+        ['1D', 'Heat map ช่องว่างเมือง-ชนบท', 'ในภาคเดียวกันต่างกันแค่ไหน', 'ภาค + ปี', ['1A', '1B', '1C', 'KPI', 'ตาราง']]] },
+    2: { q: 'ราคาบ้านในแต่ละพื้นที่ของประเทศเปลี่ยนไปอย่างไร ภาคและประเภทบ้านไหนโตเร็ว (ธปท.)', note: 'ทาวน์เฮ้าส์ไม่มีเหนือ/อีสาน → แสดงข้อความไม่มีข้อมูล · 2D เป็นกราฟเสริม ต้องให้ผู้ใช้ยืนยัน (D7)',
+      rows: [
+        ['2A', 'Choropleth ดัชนี/YoY/CAGR', 'ภาคไหนโตเร็ว', 'ภาค', ['2B', '2C', 'KPI', 'ตาราง']],
+        ['2B', 'Linear trend ดัชนี (รายเดือน/รายปี)', 'ทิศทางตามเวลา', 'ปี · ภาค', ['2A', '2C', 'KPI', 'ตาราง']],
+        ['2C', 'Heat map YoY ภาค × ปี', 'ปีไหนภาคไหนเร่ง/ชะลอ', 'ภาค + ปี', ['2A', '2B', 'KPI', 'ตาราง']],
+        ['2D', '(เสริม) Treemap ประเภทบ้าน → ภาค', 'การเติบโตสะสมเทียบกัน', 'ภาค', ['2A', '2B', '2C']]] },
+    3: { q: 'ซื้อบ้านยากขึ้นหรือง่ายขึ้น เมื่อเทียบการเติบโตของรายได้กับราคาบ้าน (ทั้งสองชุด)', note: 'รายได้มีเฉพาะปีรอบสำรวจ · ถ้าเริ่มช่วงหลัง 2554 ต้อง rebase ที่ต้นช่วง',
+      rows: [
+        ['3A', 'เส้นอัตราส่วนดัชนี ราคาบ้าน ÷ รายได้', 'ยากหรือง่ายขึ้น', 'ภาค · ปี', ['3B', '3C', '3D', 'KPI', 'ตาราง']],
+        ['3B', 'แท่งคู่ ดัชนีรายได้ vs ราคาบ้าน', 'เทียบสองข้อมูลทีละปี', 'ปี', ['3A', 'KPI', 'ตาราง']],
+        ['3C', 'แท่ง CAGR ตลอดช่วง', 'รายได้โตเทียบราคาบ้านกี่ %/ปี', '–', []],
+        ['3D', 'แท่ง CAGR แยกภาค/ประเภทบ้าน', 'ภาคหรือประเภทไหนช่องว่างมาก', 'ภาค', ['3A', '3B', '3C', 'KPI', 'ตาราง']]] }
+  };
+  var curTab = '1', curSrc = null;
+  function renderTab() {
+    var t = TABS[curTab];
+    $('#tabQ').textContent = 'คำถามหลัก: ' + t.q;
+    var tgt = {};
+    if (curSrc) { t.rows.forEach(function (r) { if (r[0] === curSrc) r[4].forEach(function (x) { tgt[x] = 1; }); }); }
+    $('#chartRows').innerHTML = t.rows.map(function (r) {
+      var cls = 'link-row' + (r[0] === curSrc ? ' src' : (tgt[r[0]] ? ' on' : ''));
+      return '<tr class="' + cls + '" data-id="' + r[0] + '" tabindex="0" style="cursor:pointer"><td><b>' + r[0] + '</b></td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td><td>' + (r[4].length ? r[4].join(' · ') : 'ไม่ตั้งตัวกรอง') + '</td></tr>';
+    }).join('');
+    $('#linkNote').textContent = t.note + (curSrc ? ' · เลือก ' + curSrc + ': ' + (tgt.KPI ? 'KPI และตารางอัปเดตด้วย' : '') : '');
+  }
+  $('#tabSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-tab]'); if (!b) return;
+    curTab = b.getAttribute('data-tab'); curSrc = null;
+    $$('#tabSeg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    renderTab();
+  });
+  $('#chartRows').addEventListener('click', function (e) {
+    var tr = e.target.closest('tr[data-id]'); if (!tr) return;
+    curSrc = curSrc === tr.getAttribute('data-id') ? null : tr.getAttribute('data-id'); renderTab();
+  });
+
+  /* ---------- wireframe summary toggle ---------- */
+  document.addEventListener('click', function (e) {
+    var s = e.target.closest('[data-sum]');
+    if (s) { var p = document.getElementById(s.getAttribute('data-sum')); var o = !p.classList.contains('open'); p.classList.toggle('open', o); s.setAttribute('aria-expanded', String(o)); }
+    var c = e.target.closest('[data-copy]');
+    if (c) { copy($(c.getAttribute('data-copy')).textContent, c); }
+  });
+
+  /* ---------- clipboard / download ---------- */
+  function copy(text, btn) {
+    function done() { if (btn) { var o = btn.textContent; btn.textContent = 'คัดลอกแล้ว'; setTimeout(function () { btn.textContent = o; }, 1400); } }
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, fallback); } else fallback();
+    function fallback() { var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (e) {} t.remove(); done(); }
+  }
+  function download(name, text, type) {
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: type })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 500);
+  }
+
+  /* ---------- editing + persistence ---------- */
+  function syncControls() {
+    $$('input[type=checkbox]', doc).forEach(function (i) { i.toggleAttribute('checked', i.checked); });
+    $$('input[type=text]', doc).forEach(function (i) { i.setAttribute('value', i.value); });
+    $$('select', doc).forEach(function (s) { $$('option', s).forEach(function (o) { o.toggleAttribute('selected', o.value === s.value); }); });
+  }
+  function save() {
+    syncControls(); progress();
+    doc.setAttribute('data-saved-at', String(Date.now()));
+    var clone = doc.cloneNode(true); $$('[contenteditable]', clone).forEach(function (n) { n.removeAttribute('contenteditable'); });
+    try { localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), html: clone.innerHTML })); } catch (e) {}
+  }
+  function restore() {
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (s && s.at > Number(doc.getAttribute('data-saved-at') || 0)) { doc.innerHTML = s.html; doc.setAttribute('data-saved-at', String(s.at)); }
+    } catch (e) {}
+  }
+  var timer;
+  function later() { clearTimeout(timer); timer = setTimeout(save, 350); }
+  doc.addEventListener('input', later);
+  doc.addEventListener('change', later);
+  $('#btnEdit').addEventListener('click', function () {
+    var on = !document.body.classList.contains('editing');
+    document.body.classList.toggle('editing', on); this.setAttribute('aria-pressed', String(on));
+    $$('.ed', doc).forEach(function (n) { if (on) n.setAttribute('contenteditable', 'true'); else n.removeAttribute('contenteditable'); });
+    if (!on) save();
+  });
+  doc.addEventListener('focusin', function (e) { if (document.body.classList.contains('editing') && e.target.classList && e.target.classList.contains('ed')) e.target.setAttribute('contenteditable', 'true'); });
+  $('#btnReset').addEventListener('click', function () { if (confirm('ล้างการแก้ไขที่เก็บไว้ในเบราว์เซอร์นี้และโหลดหน้าใหม่?')) { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); } });
+
+  /* ---------- tasks / log ---------- */
+  function progress() {
+    var all = $$('#taskList .task'), done = all.filter(function (t) { return $('input[type=checkbox]', t).checked; });
+    all.forEach(function (t) { t.classList.toggle('done', $('input[type=checkbox]', t).checked); });
+    var p = all.length ? Math.round(100 * done.length / all.length) : 0;
+    $('#sideProg').textContent = done.length + '/' + all.length; $('#sideBar').style.width = p + '%'; $('#statProg').textContent = p + '%';
+  }
+  var STAT = ['ยังไม่เริ่ม', 'กำลังทำ', 'เสร็จ', 'ติดปัญหา'];
+  $('#btnAddTask').addEventListener('click', function () {
+    var n = $$('#taskList .task').length;
+    var d = document.createElement('div'); d.className = 'task';
+    d.innerHTML = '<input type="checkbox" aria-label="เสร็จแล้ว"><div><div class="t-title ed">งานใหม่ ' + (n + 1) + '</div><div class="t-ok ed">ผ่านเมื่อ: …</div></div><select aria-label="สถานะ">' +
+      STAT.map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select><input type="text" placeholder="ผู้รับผิดชอบ" aria-label="ผู้รับผิดชอบ">';
+    $('#taskList').appendChild(d);
+    if (document.body.classList.contains('editing')) $$('.ed', d).forEach(function (x) { x.setAttribute('contenteditable', 'true'); });
+    save();
+  });
+  $('#btnAddLog').addEventListener('click', function () {
+    var li = document.createElement('li'); li.className = 'logi';
+    li.innerHTML = '<span class="chip blue">' + new Date().toISOString().slice(0, 10) + '</span> <span class="ed">ทำอะไร / ไฟล์ไหน / ผลทดสอบ / เรื่องค้าง</span>';
+    $('#logList').appendChild(li);
+    var ed = $('.ed', li); ed.setAttribute('contenteditable', 'true'); ed.focus();
+    var r = document.createRange(); r.selectNodeContents(ed); var sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    save();
+  });
+
+  /* ---------- prompt / markdown / html export ---------- */
+  function taskLines() {
+    return $$('#taskList .task').map(function (t) {
+      var done = $('input[type=checkbox]', t).checked, st = $('select', t).value, who = $('input[type=text]', t).value.trim();
+      return '- [' + (done ? 'x' : ' ') + '] ' + $('.t-title', t).textContent.trim() + ' — ' + st + (who ? ' (' + who + ')' : '') + ' · ' + $('.t-ok', t).textContent.trim();
+    });
+  }
+  function decLines(openOnly) {
+    return $$('#decRows tr').map(function (r) {
+      var c = $$('td', r), st = $('select', r).value, ans = c[3].textContent.trim();
+      return { st: st, line: '- ' + c[0].textContent.trim() + ' ' + c[1].textContent.trim() + ' | สมมติ: ' + c[2].textContent.trim() + ' | สถานะ: ' + st + (ans ? ' | คำตอบ: ' + ans : '') };
+    }).filter(function (d) { return !openOnly || d.st === 'เปิดอยู่'; }).map(function (d) { return d.line; });
+  }
+  function logLines() { return $$('#logList .logi').map(function (l) { return '- ' + l.textContent.replace(/\s+/g, ' ').trim(); }); }
+  function mdAll() {
+    return ['# Handoff · income-housing-dashboard', '', 'อัปเดต ' + new Date().toISOString().slice(0, 10), '', '## งาน', ''].concat(taskLines(), ['', '## Decisions', ''], decLines(false), ['', '## บันทึกการเปลี่ยนแปลง', ''], logLines(), ['']).join('\n');
+  }
+  $('#btnMd').addEventListener('click', function () { save(); download('handoff-status.md', mdAll(), 'text/markdown;charset=utf-8'); });
+  $('#btnHtml').addEventListener('click', function () {
+    save();
+    var cl = document.documentElement.cloneNode(true);
+    cl.setAttribute('data-theme', 'dark');
+    $$('[contenteditable]', cl).forEach(function (n) { n.removeAttribute('contenteditable'); });
+    var b = cl.querySelector('body'); if (b) b.classList.remove('editing');
+    download('HANDOFF.html', '<!doctype html>\n' + cl.outerHTML, 'text/html;charset=utf-8');
+  });
+  $('#btnPrompt').addEventListener('click', function () {
+    save();
+    var open = decLines(true);
+    var p = ['คุณรับช่วงต่อโปรเจกต์ income-housing-dashboard (แดชบอร์ดภาษาไทย 3 แท็บ: รายได้ครัวเรือน · ดัชนีราคาบ้าน · รายได้ vs ราคาบ้าน; Python backend + Plotly; ข้อมูลใน SQLite)',
+      '', 'อ่านตามลำดับ: docs/01_PROJECT_SPEC.md → docs/02_DATASET_DESCRIPTIONS.md → docs/03_DATABASE_SCHEMA.md',
+      'เริ่ม: pip install -r requirements-dev.txt && python etl/build_db.py (ต้องจบด้วย "OK database written")', '',
+      'สถานะงานตอนนี้:'].concat(taskLines(), ['', 'Decisions ที่ยังเปิด (ใช้ค่าที่สมมติไว้ก่อน แล้วถามผู้ใช้ตอนส่งมอบ):'], open.length ? open : ['- ไม่มี'],
+      ['', 'บันทึกล่าสุด:'], logLines().slice(-3),
+      ['', 'กติกา: (1) ทุกกราฟในแท็บเชื่อมกัน (2) ฟ้า=รายได้ ส้ม=ราคาบ้าน ทั้งโหมดมืด/สว่าง (3) ทุกกราฟมีปุ่ม สรุป/ตาราง/CSV (4) ห้ามเขียนว่า แพงที่สุด / ค่าครองชีพ / ครอบคลุมทุกประเภทบ้าน (5) ตัวเลขต้องตรง data/expected_values.json',
+       'ทำงานทีละ milestone ปิดงานแล้วติ๊กใน HANDOFF.html และเพิ่มบรรทัดในบันทึกการเปลี่ยนแปลง'])
+      .join('\n');
+    copy(p, this);
+  });
+
+  /* ---------- init ---------- */
+  restore();
+  paintTheme();
+  renderTab();
+  progress();
+})();
+</script>
+</body>
+</html>

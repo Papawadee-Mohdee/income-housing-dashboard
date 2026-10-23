@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest>=8.0
+httpx>=0.27
+# only needed to rebuild static/regions.geojson
+geopandas>=0.14
+shapely>=2.0

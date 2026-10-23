@@ -1,0 +1,52 @@
+{
+  "window": [
+    2554,
+    2566
+  ],
+  "years_span": 12,
+  "rule": "annual HPI = mean of 12 months; CAGR = (end/start)^(1/years)-1",
+  "income_cagr_pct": {
+    "TH": 1.87,
+    "BMR": -0.52,
+    "CEN": 3.15,
+    "NOR": 2.75,
+    "NES": 1.78,
+    "SOU": 0.36
+  },
+  "hpi_all_cagr_pct": {
+    "TH": 4.4,
+    "BMR": 4.25,
+    "CEN": 4.79,
+    "NOR": 5.06,
+    "NES": 4.73,
+    "SOU": 3.21
+  },
+  "hpi_cagr_pct_national_by_type": {
+    "ALL": 4.4,
+    "DETACHED": 3.66,
+    "TOWNHOUSE": 4.58
+  },
+  "price_to_income_index_2566_all": {
+    "TH": 134.2,
+    "BMR": 175.5,
+    "CEN": 120.8,
+    "NOR": 130.5,
+    "NES": 140.8,
+    "SOU": 139.9
+  },
+  "urban_rural_gap_pct_2566": {
+    "TH": 33.8,
+    "BMR": 9.0,
+    "CEN": 14.6,
+    "NOR": 26.2,
+    "NES": 25.4,
+    "SOU": 15.5
+  },
+  "treemap_shares_2566_national_pct": {
+    "FROM_WORK": 70.5,
+    "CURRENT_TRANSFER": 13.1,
+    "PROPERTY_INCOME": 0.8,
+    "NONMONEY_INCOME": 14.5,
+    "NONCUR_M_INCOME": 1.1
+  }
+}
