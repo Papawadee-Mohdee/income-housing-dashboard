@@ -1,0 +1,72 @@
+/* Design tokens for Income × Housing Dashboard */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --font-family: 'IBM Plex Sans Thai', 'Noto Sans Thai', 'Sarabun', system-ui, -apple-system, sans-serif;
+  --radius-card: 20px;
+  --radius-btn: 12px;
+  --radius-chip: 9999px;
+  --radius-sm: 8px;
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-sm: 0 1px 2px rgba(15, 27, 45, 0.06);
+  --shadow-lg: 0 8px 24px rgba(15, 27, 45, 0.08);
+}
+
+[data-theme="dark"] {
+  --bg: #0E1116;
+  --surface: #161B22;
+  --surface-2: #1D232C;
+  --border: #2B3340;
+  --text: #EEF1F6;
+  --text-muted: #9AA6B8;
+  --blue: #4F8FF7;
+  --blue-strong: #2F6FEB;
+  --blue-soft: rgba(79, 143, 247, 0.16);
+  --orange: #FF7A2E;
+  --orange-soft: rgba(255, 122, 46, 0.16);
+  --positive: #34D399;
+  --negative: #F87171;
+  --warning: #FBBF24;
+  --focus: #7DB0FF;
+  --card-border: 1px solid var(--border);
+  --card-shadow: none;
+}
+
+[data-theme="light"] {
+  --bg: #F2F5FA;
+  --surface: #FFFFFF;
+  --surface-2: #EDF1F8;
+  --border: #D9E0EC;
+  --text: #0F1B2D;
+  --text-muted: #546178;
+  --blue: #2563EB;
+  --blue-strong: #1D4ED8;
+  --blue-soft: rgba(37, 99, 235, 0.10);
+  --orange: #E8590C;
+  --orange-soft: rgba(232, 89, 12, 0.10);
+  --positive: #059669;
+  --negative: #DC2626;
+  --warning: #B45309;
+  --focus: #1D4ED8;
+  --card-border: 1px solid transparent;
+  --card-shadow: var(--shadow-sm), var(--shadow-lg);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
