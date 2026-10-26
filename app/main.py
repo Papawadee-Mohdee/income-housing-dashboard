@@ -19,6 +19,7 @@ from app import db
 from app.figures import tab1 as fig_tab1, tab2 as fig_tab2, tab3 as fig_tab3
 from app.filters import Filters
 from app.metrics import cagr_pct, pct_change
+from app.summaries import VALID_CHART_IDS, build_summary
 
 app = FastAPI(title="Income × Housing Dashboard API", version="2.0.0")
 
@@ -557,6 +558,49 @@ def get_tab(
         return _handle_tab3(f)
     else:
         raise HTTPException(status_code=404, detail="Tab not found")
+
+
+@app.get("/api/summary/{tab}/{chart_id}")
+def get_summary(
+    tab: int,
+    chart_id: str,
+    year: Optional[int] = None,
+    y0: Optional[int] = None,
+    y1: Optional[int] = None,
+    region: Optional[int] = None,
+    area: Optional[int] = None,
+    pt: Optional[int] = None,
+    metric: Optional[str] = None,
+    grain: Optional[str] = None,
+    theme: Optional[str] = None,
+    cagr_view: Optional[str] = None,
+    real: Optional[bool] = None,
+):
+    try:
+        f = Filters.from_params(
+            tab=tab,
+            year=year,
+            y0=y0,
+            y1=y1,
+            region=region,
+            area=area,
+            pt=pt,
+            metric=metric,
+            grain=grain,
+            theme=theme,
+            cagr_view=cagr_view,
+            real=real,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    if tab not in VALID_CHART_IDS or chart_id not in VALID_CHART_IDS[tab]:
+        raise HTTPException(status_code=422, detail=f"รหัสกราฟ '{chart_id}' ไม่ถูกต้องสำหรับแท็บ {tab}")
+
+    try:
+        return build_summary(tab, chart_id, f)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -47,7 +47,17 @@
     trendingDown: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>`,
     barChart: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>`,
     activity: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+    fileText: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`,
   };
+
+  function renderSummaryBtn(tab, chartId) {
+    return `
+      <button type="button" class="btn-summary" data-tab="${tab}" data-chart-id="${chartId}" aria-haspopup="dialog" aria-label="อ่านสรุป">
+        ${ICONS.fileText}
+        <span>อ่านสรุป</span>
+      </button>
+    `;
+  }
 
   // ──────────────── URL Sync ────────────────
   function readUrlParams() {
@@ -441,7 +451,10 @@
     mapCard.innerHTML = `
       <div class="chart-header">
         <h3 class="chart-title">${mapTitle}</h3>
-        ${mapSegmentedHtml}
+        <div class="chart-header-actions">
+          ${mapSegmentedHtml}
+          ${renderSummaryBtn(state.tab, state.tab === 1 ? 't1_map' : 't2_map')}
+        </div>
       </div>
       <div class="chart-read-guide">${choroObj.read_guide || ''}</div>
       <div class="plotly-container" id="plot-choropleth"></div>
@@ -478,7 +491,10 @@
     trendCard.innerHTML = `
       <div class="chart-header">
         <h3 class="chart-title">${trendTitle}</h3>
-        ${trendSegmentedHtml}
+        <div class="chart-header-actions">
+          ${trendSegmentedHtml}
+          ${renderSummaryBtn(state.tab, state.tab === 1 ? 't1_trend' : 't2_trend')}
+        </div>
       </div>
       <div class="chart-read-guide">${trendObj.read_guide || ''}</div>
       <div class="plotly-container" id="plot-trend"></div>
@@ -494,6 +510,9 @@
     heatmapCard.innerHTML = `
       <div class="chart-header">
         <h3 class="chart-title">${heatmapTitle}</h3>
+        <div class="chart-header-actions">
+          ${renderSummaryBtn(state.tab, state.tab === 1 ? 't1_gap' : 't2_yoy')}
+        </div>
       </div>
       <div class="chart-read-guide">${heatmapObj.read_guide || ''}</div>
       <div class="plotly-container" id="plot-heatmap"></div>
@@ -512,6 +531,9 @@
       treemapCard.innerHTML = `
         <div class="chart-header">
           <h3 class="chart-title">สัดส่วนแหล่งที่มาของรายได้</h3>
+          <div class="chart-header-actions">
+            ${renderSummaryBtn(1, 't1_sources')}
+          </div>
         </div>
         <div class="chart-read-guide">${treeObj.read_guide || ''}</div>
         <div class="plotly-container" id="plot-treemap"></div>
@@ -581,6 +603,9 @@
     heroCard.innerHTML = `
       <div class="chart-header">
         <h3 class="chart-title">1 · แนวโน้มดัชนีราคาบ้านเทียบกับรายได้ (Price-to-Income Ratio)</h3>
+        <div class="chart-header-actions">
+          ${renderSummaryBtn(3, 't3_ratio')}
+        </div>
       </div>
       <div class="chart-read-guide">${heroObj.read_guide || ''}</div>
       <div class="plotly-container" id="plot-hero"></div>
@@ -613,10 +638,13 @@
     cagrCard.innerHTML = `
       <div class="chart-header">
         <h3 class="chart-title">3 · เปรียบเทียบอัตราเติบโต (CAGR)</h3>
-        <div class="segmented-control" id="cagr-view-control">
-          <button class="segmented-btn ${state.cagr_view === 'summary' ? 'active' : ''}" data-view="summary">ภาพรวม</button>
-          <button class="segmented-btn ${state.cagr_view === 'by_region' ? 'active' : ''}" data-view="by_region">แยกภาค</button>
-          <button class="segmented-btn ${state.cagr_view === 'by_type' ? 'active' : ''}" data-view="by_type">แยกบ้าน</button>
+        <div class="chart-header-actions">
+          <div class="segmented-control" id="cagr-view-control">
+            <button class="segmented-btn ${state.cagr_view === 'summary' ? 'active' : ''}" data-view="summary">ภาพรวม</button>
+            <button class="segmented-btn ${state.cagr_view === 'by_region' ? 'active' : ''}" data-view="by_region">แยกภาค</button>
+            <button class="segmented-btn ${state.cagr_view === 'by_type' ? 'active' : ''}" data-view="by_type">แยกบ้าน</button>
+          </div>
+          ${renderSummaryBtn(3, 't3_cagr')}
         </div>
       </div>
       <div class="chart-read-guide">${cagrObj.read_guide || ''}</div>
@@ -839,11 +867,174 @@
     updateTabUI();
   }
 
+  // ──────────────── Summary Modal Handler (§12.2 & §12.3) ────────────────
+  let lastActiveSummaryBtn = null;
+
+  function formatBulletNumbers(text) {
+    if (!text) return '';
+    return text.replace(/(?:[+−\u2212-])?\d+(?:,\d+)*(?:\.\d+)?(?:%(?:\/ปี)?)?/g, m => `<b class="tabular-nums">${m}</b>`);
+  }
+
+  async function openSummaryModal(tab, chartId, btn) {
+    lastActiveSummaryBtn = btn;
+    const dialog = document.getElementById('summary-dialog');
+    if (!dialog) return;
+
+    const params = {
+      year: state.year,
+      y0: state.y0,
+      y1: state.y1,
+      region: state.region,
+      area: state.area,
+      pt: state.pt,
+      metric: state.metric,
+      grain: state.grain,
+      cagr_view: state.cagr_view,
+    };
+
+    let summary = null;
+    try {
+      if (window.DashboardEngine && typeof DashboardEngine.getSummary === 'function') {
+        summary = DashboardEngine.getSummary(tab, chartId, params);
+      } else {
+        const query = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => {
+          if (v !== null && v !== undefined) query.set(k, v);
+        });
+        const res = await fetch(`/api/summary/${tab}/${chartId}?${query.toString()}`);
+        if (!res.ok) throw new Error('Summary fetch failed');
+        summary = await res.json();
+      }
+    } catch (err) {
+      console.error('Failed to load summary:', err);
+      return;
+    }
+
+    if (!summary) return;
+
+    const titleEl = document.getElementById('summary-dialog-title');
+    const chipsEl = document.getElementById('summary-chips-row');
+    const headlineEl = document.getElementById('summary-headline');
+    const bulletsEl = document.getElementById('summary-bullets');
+    const cautionBox = document.getElementById('summary-caution');
+    const cautionText = document.getElementById('summary-caution-text');
+    const emptyBox = document.getElementById('summary-empty');
+
+    if (titleEl) titleEl.textContent = summary.title || 'สรุปข้อมูล';
+    if (chipsEl) {
+      chipsEl.innerHTML = (summary.filters || []).map(f => `<span class="summary-chip">${f.value}</span>`).join('');
+    }
+
+    if (summary.empty) {
+      if (emptyBox) {
+        emptyBox.textContent = summary.empty;
+        emptyBox.style.display = 'block';
+      }
+      if (headlineEl) headlineEl.style.display = 'none';
+      if (bulletsEl) bulletsEl.style.display = 'none';
+      if (cautionBox) cautionBox.style.display = 'none';
+    } else {
+      if (emptyBox) emptyBox.style.display = 'none';
+      if (headlineEl) {
+        headlineEl.textContent = summary.headline || '';
+        headlineEl.style.display = summary.headline ? 'block' : 'none';
+      }
+      if (bulletsEl) {
+        bulletsEl.innerHTML = (summary.bullets || []).map(b => `<li>${formatBulletNumbers(b)}</li>`).join('');
+        bulletsEl.style.display = (summary.bullets && summary.bullets.length > 0) ? 'flex' : 'none';
+      }
+      if (cautionBox && cautionText) {
+        if (summary.caution) {
+          cautionText.textContent = summary.caution;
+          cautionBox.style.display = 'flex';
+        } else {
+          cautionBox.style.display = 'none';
+        }
+      }
+    }
+
+    dialog.showModal();
+    document.body.classList.add('dialog-open');
+
+    const closeBtn = document.getElementById('summary-dialog-close');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function initSummaryDialog() {
+    const dialog = document.getElementById('summary-dialog');
+    if (!dialog) return;
+
+    const closeBtn = document.getElementById('summary-dialog-close');
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        dialog.close();
+      };
+    }
+
+    dialog.addEventListener('close', () => {
+      document.body.classList.remove('dialog-open');
+      if (lastActiveSummaryBtn) {
+        try {
+          lastActiveSummaryBtn.focus();
+        } catch (e) {}
+      }
+    });
+
+    dialog.addEventListener('cancel', () => {
+      document.body.classList.remove('dialog-open');
+      if (lastActiveSummaryBtn) {
+        try {
+          lastActiveSummaryBtn.focus();
+        } catch (e) {}
+      }
+    });
+
+    // Close when clicking outside modal box (backdrop)
+    dialog.addEventListener('click', (e) => {
+      const rect = dialog.getBoundingClientRect();
+      const inDialog = (
+        rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX && e.clientX <= rect.left + rect.width
+      );
+      if (!inDialog) {
+        dialog.close();
+      }
+    });
+
+    // Trap focus inside modal
+    dialog.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        const focusable = dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          last.focus();
+          e.preventDefault();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          first.focus();
+          e.preventDefault();
+        }
+      }
+    });
+
+    // Global click listener for summary buttons
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-summary');
+      if (!btn) return;
+      e.preventDefault();
+      const tab = parseInt(btn.dataset.tab, 10);
+      const chartId = btn.dataset.chartId;
+      openSummaryModal(tab, chartId, btn);
+    });
+  }
+
   // ──────────────── Init ────────────────
   window.addEventListener('DOMContentLoaded', async () => {
     readUrlParams();
     initTheme();
     initTabs();
+    initSummaryDialog();
     await fetchMeta();
     await fetchTabData();
   });

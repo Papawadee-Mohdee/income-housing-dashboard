@@ -1832,6 +1832,786 @@
     };
   }
 
+  // ──────────────── Chart Summaries Generator (v2 §12) ────────────────
+  const SUMMARY_MINUS = '\u2212';
+  const SUMMARY_VALID_CHART_IDS = {
+    1: new Set(['t1_map', 't1_trend', 't1_gap', 't1_sources']),
+    2: new Set(['t2_map', 't2_trend', 't2_yoy']),
+    3: new Set(['t3_ratio', 't3_cagr']),
+  };
+  const SUMMARY_CHART_TITLES = {
+    t1_map: 'แผนที่รายได้เฉลี่ยต่อเดือน',
+    t1_trend: 'แนวโน้มรายได้เฉลี่ยต่อเดือน',
+    t1_gap: 'ช่องว่างเมือง-ชนบท (%)',
+    t1_sources: 'สัดส่วนแหล่งที่มาของรายได้',
+    t2_map: 'แผนที่ดัชนีราคาบ้าน',
+    t2_trend: 'แนวโน้มดัชนีราคาบ้าน',
+    t2_yoy: 'อัตราเปลี่ยนแปลงรายปี (YoY %)',
+    t3_ratio: '1 · แนวโน้มดัชนีราคาบ้านเทียบกับรายได้ (Price-to-Income Ratio)',
+    t3_cagr: '3 · เปรียบเทียบอัตราเติบโต (CAGR)',
+  };
+  const SUMMARY_PROPERTY_TYPE_NAMES = {
+    1: 'รวมทุกประเภท',
+    2: 'บ้านเดี่ยว',
+    3: 'ทาวน์เฮ้าส์',
+  };
+  const SUMMARY_AREA_NAMES = {
+    0: 'รวมทุกเขต',
+    1: 'ในเขตเทศบาล (เมือง)',
+    2: 'นอกเขตเทศบาล (ชนบท)',
+  };
+  const SUMMARY_CAGR_VIEW_NAMES = {
+    summary: 'ภาพรวม',
+    by_region: 'แยกภาค',
+    by_type: 'แยกบ้าน',
+  };
+  const SUMMARY_THAI_MONTH_ABBR = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+  function fmtBaht(v) {
+    if (v === null || v === undefined) return '—';
+    return Math.round(v).toLocaleString('en-US');
+  }
+
+  function fmtCagr(v) {
+    if (v === null || v === undefined) return '—';
+    if (v < 0) return `${SUMMARY_MINUS}${Math.abs(v).toFixed(2)}%/ปี`;
+    return `${v.toFixed(2)}%/ปี`;
+  }
+
+  function fmtSignPct(v, d = 2) {
+    if (v === null || v === undefined) return '—';
+    if (v < 0) return `${SUMMARY_MINUS}${Math.abs(v).toFixed(d)}%`;
+    return `+${v.toFixed(d)}%`;
+  }
+
+  function fmtDiffPoints(v) {
+    if (v === null || v === undefined) return '—';
+    if (v < 0) return `${SUMMARY_MINUS}${Math.abs(v).toFixed(2)} จุด`;
+    return `+${v.toFixed(2)} จุด`;
+  }
+
+  function getScopeName(meta, regionId) {
+    if (!regionId || regionId === 0) return 'ทั่วประเทศ';
+    const reg = (meta && meta.regions) ? meta.regions.find(r => r.region_id === regionId) : null;
+    return reg ? reg.short_th : 'ทั่วประเทศ';
+  }
+
+  function _buildT1MapSummary(f, meta) {
+    const year = f.year;
+    const area = f.area;
+    const metric = f.metric;
+    const region = f.region;
+    const scope = getScopeName(meta, region);
+
+    if (metric === 'income_index' || metric === 'index') {
+      const rows = [];
+      meta.regions.filter(r => r.region_id > 0).forEach(r => {
+        const curRow = DB.income.find(x => x.year_be === year && x.area_type_id === area && x.region_id === r.region_id);
+        const baseRow = DB.income.find(x => x.year_be === 2554 && x.area_type_id === area && x.region_id === r.region_id);
+        if (curRow && baseRow && baseRow.monthly_income) {
+          const val = roundVal(100.0 * curRow.monthly_income / baseRow.monthly_income, 1);
+          rows.push({ region_id: r.region_id, short_th: r.short_th, value: val });
+        }
+      });
+      if (!rows.length) return { headline: null, bullets: [], caution: 'ไม่มีข้อมูล', empty: null };
+      rows.sort((a, b) => b.value - a.value);
+      const top = rows[0];
+      const bottom = rows[rows.length - 1];
+      const below100 = rows.filter(r => r.value < 100.0);
+
+      const headline = `ปี ${year} ดัชนีรายได้สูงสุดที่${top.short_th} (${top.value.toFixed(1)}) ต่ำสุดที่${bottom.short_th} (${bottom.value.toFixed(1)})`;
+      const bullets = [
+        '5 ภาคเรียงตามดัชนีรายได้: ' + rows.map(r => `${r.short_th} ${r.value.toFixed(1)}`).join(' · '),
+      ];
+      if (below100.length > 0) {
+        bullets.push('ภาคที่ดัชนีรายได้ต่ำกว่า 100: ' + below100.map(r => `${r.short_th} (${r.value.toFixed(1)})`).join(' · '));
+      } else {
+        bullets.push('ทุกภาคมีดัชนีรายได้สูงกว่าปีฐาน 2554 (ดัชนี > 100)');
+      }
+      return { headline: headline, bullets: bullets, caution: 'ตัวเลขเป็นราคาตามปี ไม่ปรับเงินเฟ้อ', empty: null };
+    } else if (metric === 'transfer_share' || metric === 'transfer') {
+      const rows = [];
+      meta.regions.filter(r => r.region_id > 0).forEach(r => {
+        const curRow = DB.income.find(x => x.year_be === year && x.area_type_id === area && x.region_id === r.region_id);
+        if (curRow && curRow.monthly_income) {
+          const val = roundVal(100.0 * curRow.current_transfer / curRow.monthly_income, 1);
+          rows.push({ region_id: r.region_id, short_th: r.short_th, value: val });
+        }
+      });
+      if (!rows.length) return { headline: null, bullets: [], caution: 'ไม่มีข้อมูล', empty: null };
+      rows.sort((a, b) => b.value - a.value);
+      const top = rows[0];
+      const bottom = rows[rows.length - 1];
+
+      const natRow = DB.income.find(x => x.year_be === year && x.area_type_id === area && x.region_id === 0);
+      const natTransfer = natRow && natRow.monthly_income ? roundVal(100.0 * natRow.current_transfer / natRow.monthly_income, 1) : 0.0;
+
+      const headline = `ปี ${year} สัดส่วนเงินโอน/สวัสดิการสูงสุดที่${top.short_th} ${top.value.toFixed(1)}% ต่ำสุดที่${bottom.short_th} ${bottom.value.toFixed(1)}%`;
+      const isanBmrText = (top.short_th === 'อีสาน' && bottom.short_th === 'กทม.+ปริมณฑล')
+        ? `อีสานสูงสุด ${top.value.toFixed(1)}% กทม.+ปริมณฑลต่ำสุด ${bottom.value.toFixed(1)}% (ทั้งประเทศ ${natTransfer.toFixed(1)}%)`
+        : `${top.short_th}สูงสุด ${top.value.toFixed(1)}% ${bottom.short_th}ต่ำสุด ${bottom.value.toFixed(1)}% (ทั้งประเทศ ${natTransfer.toFixed(1)}%)`;
+      const bullets = [
+        isanBmrText,
+        '5 ภาคเรียงตามสัดส่วนเงินโอน: ' + rows.map(r => `${r.short_th} ${r.value.toFixed(1)}%`).join(' · '),
+      ];
+      return { headline: headline, bullets: bullets, caution: 'ตัวเลขเป็นราคาตามปี ไม่ปรับเงินเฟ้อ', empty: null };
+    } else {
+      // Default: metric === 'income'
+      const rows = [];
+      meta.regions.filter(r => r.region_id > 0).forEach(r => {
+        const curRow = DB.income.find(x => x.year_be === year && x.area_type_id === area && x.region_id === r.region_id);
+        if (curRow && curRow.monthly_income) {
+          rows.push({ region_id: r.region_id, short_th: r.short_th, value: curRow.monthly_income });
+        }
+      });
+      if (!rows.length) return { headline: null, bullets: [], caution: 'ไม่มีข้อมูล', empty: null };
+      rows.sort((a, b) => b.value - a.value);
+      const top = rows[0];
+      const bottom = rows[rows.length - 1];
+      const ratio = bottom.value ? roundVal(top.value / bottom.value, 2) : 0.0;
+
+      const natRow = DB.income.find(x => x.year_be === year && x.area_type_id === area && x.region_id === 0);
+      const natV = natRow ? natRow.monthly_income : 0;
+
+      let headline = '';
+      let bullets = [];
+      if (region !== null && region > 0) {
+        const rank = rows.findIndex(r => r.region_id === region) + 1;
+        const cur = rows.find(r => r.region_id === region);
+        headline = `ปี ${year} ${cur.short_th} มีรายได้ ${fmtBaht(cur.value)} บาท/เดือน เป็นอันดับที่ ${rank} จาก 5 ภาค (เทียบทั้งประเทศ ${fmtBaht(natV)} บาท/เดือน)`;
+        const diff = cur.value - natV;
+        const diffText = diff >= 0 ? `สูงกว่าค่าเฉลี่ยทั้งประเทศอยู่ ${fmtBaht(diff)} บาท` : `ต่ำกว่าค่าเฉลี่ยทั้งประเทศอยู่ ${fmtBaht(Math.abs(diff))} บาท`;
+        bullets = [
+          `${cur.short_th} มีรายได้เป็นอันดับ ${rank} จาก 5 ภาค (${fmtBaht(cur.value)} บาท/เดือน) ${diffText}`,
+          `ภาคที่มีรายได้สูงสุดคือ ${top.short_th} (${fmtBaht(top.value)} บาท) ต่ำสุดคือ ${bottom.short_th} (${fmtBaht(bottom.value)} บาท)`,
+          '5 ภาคเรียงจากมากไปน้อย: ' + rows.map(r => `${r.short_th} ${fmtBaht(r.value)}`).join(' · ') + ` บาท (ทั้งประเทศ ${fmtBaht(natV)} บาท)`,
+        ];
+      } else {
+        headline = `ปี ${year} ${top.short_th}มีรายได้สูงสุด ${fmtBaht(top.value)} บาท/เดือน ส่วน${bottom.short_th}ต่ำสุด ${fmtBaht(bottom.value)} บาท (ต่างกัน ${ratio.toFixed(2)} เท่า)`;
+        bullets = [
+          'เรียง 5 ภาคจากมากไปน้อยพร้อมค่า: ' + rows.map((r, i) => i === 0 ? fmtBaht(r.value) : `${r.short_th} ${fmtBaht(r.value)}`).join(' · '),
+          `รายได้เฉลี่ยทั้งประเทศอยู่ที่ ${fmtBaht(natV)} บาท/เดือน`,
+        ];
+      }
+      return { headline: headline, bullets: bullets, caution: 'ตัวเลขเป็นราคาตามปี ไม่ปรับเงินเฟ้อ', empty: null };
+    }
+  }
+
+  function _buildT1TrendSummary(f, meta) {
+    const y0 = f.y0;
+    const y1 = f.y1;
+    const area = f.area;
+    const region = f.region;
+    const scope = getScopeName(meta, region);
+
+    if (y0 === y1) {
+      return {
+        headline: `ปี ${y0} เป็นปีฐาน (ดัชนี = 100) จึงยังไม่มีอัตราเติบโต`,
+        bullets: ['เปรียบเทียบอัตราการเติบโตได้เมื่อเลือกช่วงปีเริ่มต้นและสิ้นสุดต่างกัน'],
+        caution: 'รายได้มีเฉพาะปีรอบสำรวจ (ทุก 2 ปี)',
+        empty: null,
+      };
+    }
+
+    const nat0 = DB.income.find(x => x.year_be === y0 && x.area_type_id === area && x.region_id === 0);
+    const nat1 = DB.income.find(x => x.year_be === y1 && x.area_type_id === area && x.region_id === 0);
+    const v0Nat = nat0 ? nat0.monthly_income : 0;
+    const v1Nat = nat1 ? nat1.monthly_income : 0;
+    const pctNat = pct_change(v0Nat, v1Nat) || 0.0;
+    const cagrNat = cagr_pct(v0Nat, v1Nat, y1 - y0) || 0.0;
+
+    const regionCagrs = [];
+    meta.regions.filter(r => !r.is_national && r.region_id > 0).forEach(r => {
+      const row0 = DB.income.find(x => x.year_be === y0 && x.area_type_id === area && x.region_id === r.region_id);
+      const row1 = DB.income.find(x => x.year_be === y1 && x.area_type_id === area && x.region_id === r.region_id);
+      if (row0 && row1 && row0.monthly_income && row1.monthly_income) {
+        const c = cagr_pct(row0.monthly_income, row1.monthly_income, y1 - y0) || 0.0;
+        const p = pct_change(row0.monthly_income, row1.monthly_income) || 0.0;
+        regionCagrs.push({
+          region_id: r.region_id,
+          short_th: r.short_th,
+          v0: row0.monthly_income,
+          v1: row1.monthly_income,
+          cagr: c,
+          pct: p,
+        });
+      }
+    });
+
+    regionCagrs.sort((a, b) => b.cagr - a.cagr);
+    const fastest = regionCagrs[0];
+    const slowest = regionCagrs[regionCagrs.length - 1];
+
+    let headline = '';
+    let bullets = [];
+
+    if (region !== null && region > 0) {
+      const cur = regionCagrs.find(r => r.region_id === region);
+      if (cur) {
+        const rank = regionCagrs.findIndex(r => r.region_id === region) + 1;
+        const direction = cur.pct >= 0 ? 'เพิ่ม' : 'ลดลง';
+        headline = `${y0}→${y1} รายได้${cur.short_th}${direction} ${Math.abs(cur.pct).toFixed(1)}% (CAGR ${fmtCagr(cur.cagr)})`;
+        const signPct = cur.pct >= 0 ? `+${cur.pct.toFixed(1)}%` : `${SUMMARY_MINUS}${Math.abs(cur.pct).toFixed(1)}%`;
+        bullets = [
+          `${cur.short_th} เป็นอันดับ ${rank} จาก 5 ภาค ในด้านอัตราเติบโตเฉลี่ยสะสม (CAGR ${fmtCagr(cur.cagr)} เทียบทั้งประเทศ ${fmtCagr(cagrNat)})`,
+          `${cur.short_th} ${fmtBaht(cur.v0)} → ${fmtBaht(cur.v1)} บาท (${signPct}, CAGR ${fmtCagr(cur.cagr)}) เทียบทั้งประเทศ ${fmtCagr(cagrNat)}`,
+        ];
+      }
+    } else {
+      const direction = pctNat >= 0 ? 'เพิ่ม' : 'ลดลง';
+      headline = `${y0}→${y1} รายได้${scope}${direction} ${Math.abs(pctNat).toFixed(1)}% (CAGR ${fmtCagr(cagrNat)})`;
+      if (fastest) bullets.push(`โตเร็วสุด${fastest.short_th} ${fmtCagr(fastest.cagr)}`);
+      if (slowest) {
+        const desc = slowest.cagr < 0 ? ' (รายได้ลดลง)' : '';
+        bullets.push(`ต่ำสุด${slowest.short_th} ${fmtCagr(slowest.cagr)}${desc}`);
+      }
+      const otherCagrs = regionCagrs.slice(1, -1).map(r => `${r.short_th} ${fmtCagr(r.cagr)}`);
+      if (otherCagrs.length > 0) {
+        bullets.push('ภาคอื่น ๆ: ' + otherCagrs.join(' · '));
+      }
+    }
+
+    return { headline: headline, bullets: bullets, caution: 'รายได้มีเฉพาะปีรอบสำรวจ (ทุก 2 ปี)', empty: null };
+  }
+
+  function _buildT1GapSummary(f, meta) {
+    const year = f.year;
+    const region = f.region;
+
+    const yearRows = [];
+    meta.regions.filter(r => !r.is_national && r.region_id > 0).forEach(r => {
+      const urban = DB.income.find(x => x.year_be === year && x.area_type_id === 1 && x.region_id === r.region_id);
+      const rural = DB.income.find(x => x.year_be === year && x.area_type_id === 2 && x.region_id === r.region_id);
+      if (urban && rural && rural.monthly_income) {
+        const gap = roundVal(100.0 * (urban.monthly_income - rural.monthly_income) / rural.monthly_income, 1);
+        yearRows.push({ region_id: r.region_id, short_th: r.short_th, gap_pct: gap });
+      }
+    });
+    if (!yearRows.length) return { headline: null, bullets: [], caution: 'ไม่มีข้อมูล', empty: null };
+    yearRows.sort((a, b) => b.gap_pct - a.gap_pct);
+    const top = yearRows[0];
+    const bottom = yearRows[yearRows.length - 1];
+
+    const natUrban = DB.income.find(x => x.year_be === year && x.area_type_id === 1 && x.region_id === 0);
+    const natRural = DB.income.find(x => x.year_be === year && x.area_type_id === 2 && x.region_id === 0);
+    const natGap = (natUrban && natRural && natRural.monthly_income)
+      ? roundVal(100.0 * (natUrban.monthly_income - natRural.monthly_income) / natRural.monthly_income, 1)
+      : null;
+
+    const bmrUrban54 = DB.income.find(x => x.year_be === 2554 && x.area_type_id === 1 && x.region_id === 1);
+    const bmrRural54 = DB.income.find(x => x.year_be === 2554 && x.area_type_id === 2 && x.region_id === 1);
+    const bmr54 = (bmrUrban54 && bmrRural54 && bmrRural54.monthly_income)
+      ? roundVal(100.0 * (bmrUrban54.monthly_income - bmrRural54.monthly_income) / bmrRural54.monthly_income, 1)
+      : null;
+
+    const bmrUrbanCur = DB.income.find(x => x.year_be === year && x.area_type_id === 1 && x.region_id === 1);
+    const bmrRuralCur = DB.income.find(x => x.year_be === year && x.area_type_id === 2 && x.region_id === 1);
+    const bmrCur = (bmrUrbanCur && bmrRuralCur && bmrRuralCur.monthly_income)
+      ? roundVal(100.0 * (bmrUrbanCur.monthly_income - bmrRuralCur.monthly_income) / bmrRuralCur.monthly_income, 1)
+      : null;
+
+    const headline = `ปี ${year} ช่องว่างเมือง-ชนบทสูงสุดที่${top.short_th} ${top.gap_pct.toFixed(1)}% ต่ำสุดที่${bottom.short_th} ${bottom.gap_pct.toFixed(1)}%`;
+    const bullets = [];
+    if (bmr54 !== null && bmrCur !== null) {
+      bullets.push(`กทม.+ปริมณฑลลดจาก ${bmr54.toFixed(1)}% (2554) เหลือ ${bmrCur.toFixed(1)}%`);
+    }
+    const otherGaps = yearRows.filter(r => r.short_th !== 'กทม.+ปริมณฑล').map(r => `${r.short_th} ${r.gap_pct.toFixed(1)}%`);
+    const natText = natGap !== null ? ` (ทั้งประเทศ ${natGap.toFixed(1)}%)` : '';
+    if (otherGaps.length > 0) {
+      bullets.push(otherGaps.join(' · ') + natText);
+    }
+
+    if (region !== null && region > 0) {
+      const cur = yearRows.find(r => r.region_id === region);
+      if (cur) {
+        const rank = yearRows.findIndex(r => r.region_id === region) + 1;
+        bullets.unshift(`${cur.short_th} มีช่องว่างเมือง-ชนบทเป็นอันดับ ${rank} จาก 5 ภาค (${cur.gap_pct.toFixed(1)}%)`);
+      }
+    }
+
+    return { headline: headline, bullets: bullets, caution: 'นิยามกทม.+ปริมณฑลของ สสช. ใช้ 4 จังหวัด', empty: null };
+  }
+
+  function _buildT1SourcesSummary(f, meta) {
+    const year = f.year;
+    const area = f.area;
+    const region = f.region;
+    const scope = getScopeName(meta, region);
+
+    const regTransfer = [];
+    meta.regions.filter(r => !r.is_national && r.region_id > 0).forEach(r => {
+      const row = DB.income.find(x => x.year_be === year && x.area_type_id === area && x.region_id === r.region_id);
+      if (row && row.monthly_income) {
+        const tr = roundVal(100.0 * row.current_transfer / row.monthly_income, 1);
+        const wk = roundVal(100.0 * row.from_work / row.monthly_income, 1);
+        regTransfer.push({ region: r.short_th, region_id: r.region_id, transfer: tr, work: wk });
+      }
+    });
+    regTransfer.sort((a, b) => b.transfer - a.transfer);
+
+    if (region !== null && region > 0) {
+      const row = DB.income.find(x => x.year_be === year && x.area_type_id === area && x.region_id === region);
+      const tot = row ? row.monthly_income : 1;
+      const w = row ? roundVal(100.0 * row.from_work / tot, 1) : 0;
+      const t = row ? roundVal(100.0 * row.current_transfer / tot, 1) : 0;
+      const nm = row ? roundVal(100.0 * row.nonmoney_income / tot, 1) : 0;
+      const o = roundVal(100.0 - (w + t + nm), 1);
+
+      const headline = `ปี ${year} ${scope} รายได้มาจากการทำงาน ${w.toFixed(1)}% เงินโอน/สวัสดิการ ${t.toFixed(1)}% ไม่เป็นตัวเงิน ${nm.toFixed(1)}% อื่น ๆ ${o.toFixed(1)}%`;
+      const rankTr = regTransfer.findIndex(x => x.region_id === region) + 1;
+      const curRk = regTransfer.find(x => x.region_id === region);
+      const bullets = [
+        `${scope} มีสัดส่วนเงินโอน/สวัสดิการสูงเป็นอันดับ ${rankTr} จาก 5 ภาค (${t.toFixed(1)}% เทียบทั้งประเทศ 13.1%)`,
+      ];
+      const minWork = Math.min(...regTransfer.map(x => x.work));
+      if (curRk && curRk.work === minWork) {
+        bullets.push(`รายได้จากการทำงานอยู่ที่ ${w.toFixed(1)}% ต่ำที่สุดใน 5 ภาค`);
+      } else {
+        bullets.push(`สัดส่วนรายได้จากการทำงานอยู่ที่ ${w.toFixed(1)}% (ทั้งประเทศ 70.5%)`);
+      }
+      return { headline: headline, bullets: bullets, caution: 'อื่น ๆ = ทรัพย์สิน + รายได้ไม่ประจำ', empty: null };
+    } else {
+      const natRow = DB.income.find(x => x.year_be === year && x.area_type_id === area && x.region_id === 0);
+      const tot = natRow ? natRow.monthly_income : 1;
+      const w = natRow ? roundVal(100.0 * natRow.from_work / tot, 1) : 70.5;
+      const t = natRow ? roundVal(100.0 * natRow.current_transfer / tot, 1) : 13.1;
+      const nm = natRow ? roundVal(100.0 * natRow.nonmoney_income / tot, 1) : 14.5;
+      const o = roundVal(100.0 - (w + t + nm), 1);
+
+      const headline = `ปี ${year} ทั่วประเทศ รายได้มาจากการทำงาน ${w.toFixed(1)}% เงินโอน/สวัสดิการ ${t.toFixed(1)}% ไม่เป็นตัวเงิน ${nm.toFixed(1)}% อื่น ๆ ${o.toFixed(1)}%`;
+      const topTr = regTransfer[0];
+      const botTr = regTransfer[regTransfer.length - 1];
+      const topWk = [...regTransfer].sort((a, b) => b.work - a.work)[0];
+      const bullets = [
+        `${topTr.region}พึ่งเงินโอนมากสุด ${topTr.transfer.toFixed(1)}% ${botTr.region}ต่ำสุด ${botTr.transfer.toFixed(1)}%`,
+        `${topWk.region}มีสัดส่วนรายได้จากการทำงานสูงสุดที่ ${topWk.work.toFixed(1)}%`,
+      ];
+      return { headline: headline, bullets: bullets, caution: 'อื่น ๆ = ทรัพย์สิน + รายได้ไม่ประจำ', empty: null };
+    }
+  }
+
+  function _buildT2MapSummary(f, meta) {
+    const year = f.year;
+    const pt = f.pt;
+    const region = f.region;
+    const metric = f.metric;
+    const ptName = SUMMARY_PROPERTY_TYPE_NAMES[pt] || 'รวมทุกประเภท';
+
+    if (pt === 3 && (region === 3 || region === 4)) {
+      return { headline: null, bullets: [], caution: null, empty: 'ไม่มีข้อมูลทาวน์เฮ้าส์ของภาคนี้ (ธปท. ไม่มีชุดข้อมูลนี้)' };
+    }
+
+    if (year === 2554) {
+      return {
+        headline: 'ปี 2554 เป็นปีฐาน (ดัชนี = 100) จึงยังไม่มีอัตราเติบโต',
+        bullets: [`ดัชนีราคาบ้าน${ptName}ทุกภาคเริ่มต้นที่ 100.0 ในปี 2554`],
+        caution: 'ดัชนีบอกการเปลี่ยนแปลง ไม่ใช่ระดับราคาบ้านเป็นบาท จึงไม่ใช้จัดอันดับระดับราคา',
+        empty: null,
+      };
+    }
+
+    const natHpi = DB.hpi_annual.find(r => r.year_be === year && r.region_id === 0 && r.property_type_id === pt);
+    const nat54 = DB.hpi_annual.find(r => r.year_be === 2554 && r.region_id === 0 && r.property_type_id === pt);
+    const idx = natHpi ? natHpi.index_mean12 : 100.0;
+    const v54 = nat54 ? nat54.index_mean12 : 100.0;
+    const pct = idx - v54;
+    const cagr = cagr_pct(v54, idx, year - 2554) || 0.0;
+
+    const headline = `ปี ${year} ดัชนีราคาบ้าน${ptName}ทั้งประเทศ ${idx.toFixed(1)} (สูงกว่าปี 2554 ${pct.toFixed(1)}%) โตเฉลี่ย ${fmtCagr(cagr)}`;
+
+    const cagrRows = [];
+    const yoyRows = [];
+    meta.regions.filter(r => !r.is_national && r.region_id > 0).forEach(r => {
+      const cur = DB.hpi_annual.find(a => a.year_be === year && a.region_id === r.region_id && a.property_type_id === pt);
+      const prev = DB.hpi_annual.find(a => a.year_be === year - 1 && a.region_id === r.region_id && a.property_type_id === pt);
+      const b54 = DB.hpi_annual.find(a => a.year_be === 2554 && a.region_id === r.region_id && a.property_type_id === pt);
+      if (cur && b54 && b54.index_mean12) {
+        const cVal = cagr_pct(b54.index_mean12, cur.index_mean12, year - 2554) || 0.0;
+        cagrRows.push({ region_id: r.region_id, short_th: r.short_th, value: cVal });
+      }
+      if (cur && prev && prev.index_mean12) {
+        const yVal = roundVal(100.0 * (cur.index_mean12 / prev.index_mean12 - 1.0), 2);
+        yoyRows.push({ region_id: r.region_id, short_th: r.short_th, value: yVal });
+      }
+    });
+
+    cagrRows.sort((a, b) => b.value - a.value);
+    yoyRows.sort((a, b) => b.value - a.value);
+
+    const bullets = [];
+    if (metric === 'yoy') {
+      const topYoy = yoyRows[0];
+      const botYoy = yoyRows[yoyRows.length - 1];
+      bullets.push(`อัตราเพิ่มจากปีก่อน (YoY): ${topYoy.short_th}สูงสุด ${topYoy.value.toFixed(2)}% ${botYoy.short_th}ต่ำสุด ${botYoy.value.toFixed(2)}%`);
+      bullets.push('เรียงตาม YoY: ' + yoyRows.map(r => `${r.short_th} ${r.value.toFixed(2)}%`).join(' · '));
+    } else {
+      bullets.push('อัตราเติบโตสะสมต่อปี (CAGR): ' + cagrRows.map(r => `${r.short_th} ${r.value.toFixed(2)}`).join(' · '));
+    }
+
+    if (region !== null && region > 0) {
+      const curC = cagrRows.find(r => r.region_id === region);
+      if (curC) {
+        const rank = cagrRows.findIndex(r => r.region_id === region) + 1;
+        bullets.unshift(`${curC.short_th} มีอัตราเติบโตสะสมเป็นอันดับ ${rank} จาก 5 ภาค (${curC.value.toFixed(2)}%/ปี เทียบทั้งประเทศ ${fmtCagr(cagr)})`);
+      }
+    }
+
+    return { headline: headline, bullets: bullets, caution: 'ดัชนีบอกการเปลี่ยนแปลง ไม่ใช่ระดับราคาบ้านเป็นบาท จึงไม่ใช้จัดอันดับระดับราคา', empty: null };
+  }
+
+  function _buildT2TrendSummary(f, meta) {
+    const pt = f.pt;
+    const region = f.region;
+    const grain = f.grain;
+    const ptName = SUMMARY_PROPERTY_TYPE_NAMES[pt] || 'รวมทุกประเภท';
+    const scope = getScopeName(meta, region);
+
+    if (pt === 3 && (region === 3 || region === 4)) {
+      return { headline: null, bullets: [], caution: null, empty: 'ไม่มีข้อมูลทาวน์เฮ้าส์ของภาคนี้ (ธปท. ไม่มีชุดข้อมูลนี้)' };
+    }
+
+    const y0 = 2554;
+    const y1 = 2568;
+    const rid = region !== null ? region : 0;
+
+    const r0 = DB.hpi_annual.find(a => a.year_be === y0 && a.region_id === rid && a.property_type_id === pt);
+    const r1 = DB.hpi_annual.find(a => a.year_be === y1 && a.region_id === rid && a.property_type_id === pt);
+    const v0 = r0 ? r0.index_mean12 : 100.0;
+    const v1 = r1 ? r1.index_mean12 : 100.0;
+    const cagr = cagr_pct(v0, v1, y1 - y0) || 0.0;
+
+    const headline = `${y0}→${y1} ดัชนี${ptName}${scope} 100.0 → ${v1.toFixed(1)} โตเฉลี่ย ${fmtCagr(cagr)}`;
+    const bullets = [];
+    let caution = '';
+
+    if (grain === 'monthly') {
+      const mRows = DB.hpi_monthly.filter(m => m.region_id === rid && m.property_type_id === pt);
+      mRows.sort((a, b) => b.month_id - a.month_id);
+      const latestM = mRows[0];
+      if (latestM) {
+        const mName = SUMMARY_THAI_MONTH_ABBR[latestM.month_no] || '';
+        bullets.push(`เดือนล่าสุด ${mName} ${latestM.year_be} ดัชนี ${latestM.index_value.toFixed(1)}`);
+      }
+      caution = 'เส้นรายเดือนเป็นเฉลี่ยเคลื่อนที่ 3 เดือน · เพิ่มฐานข้อมูลสถาบันการเงินเฉพาะกิจ ม.ค. 2566 อาจมีรอยต่อ';
+    } else {
+      if (pt === 2 && (region === 3 || region === 4)) {
+        bullets.push('ดัชนีรวมทุกประเภทเท่ากับบ้านเดี่ยว');
+      } else {
+        bullets.push(`ดัชนีเพิ่มขึ้นจาก 100.0 สู่ ${v1.toFixed(1)} (เพิ่ม ${(v1 - 100.0).toFixed(1)}%)`);
+      }
+      caution = 'ดัชนีบอกการเปลี่ยนแปลงเทียบปีฐาน 2554 ไม่ใช่ระดับราคาบ้านเป็นบาท';
+    }
+
+    return { headline: headline, bullets: bullets, caution: caution, empty: null };
+  }
+
+  function _buildT2YoySummary(f, meta) {
+    const year = f.year;
+    const pt = f.pt;
+    const region = f.region;
+    const ptName = SUMMARY_PROPERTY_TYPE_NAMES[pt] || 'รวมทุกประเภท';
+
+    if (pt === 3 && (region === 3 || region === 4)) {
+      return { headline: null, bullets: [], caution: null, empty: 'ไม่มีข้อมูลทาวน์เฮ้าส์ของภาคนี้ (ธปท. ไม่มีชุดข้อมูลนี้)' };
+    }
+
+    if (year === 2554) {
+      return {
+        headline: 'ปี 2554 เป็นปีฐาน (ดัชนี = 100) จึงยังไม่มีอัตราเติบโต',
+        bullets: ['อัตราการเปลี่ยนแปลงรายปี (YoY) เริ่มต้นคำนวณตั้งแต่ปี 2555 เป็นต้นไป'],
+        caution: 'ดัชนีบอกการเปลี่ยนแปลง ไม่ใช่ระดับราคาบ้านเป็นบาท',
+        empty: null,
+      };
+    }
+
+    const yoyRows = [];
+    meta.regions.filter(r => !r.is_national && r.region_id > 0).forEach(r => {
+      const cur = DB.hpi_annual.find(a => a.year_be === year && a.region_id === r.region_id && a.property_type_id === pt);
+      const prev = DB.hpi_annual.find(a => a.year_be === year - 1 && a.region_id === r.region_id && a.property_type_id === pt);
+      if (cur && prev && prev.index_mean12) {
+        const yVal = roundVal(100.0 * (cur.index_mean12 / prev.index_mean12 - 1.0), 2);
+        yoyRows.push({ region_id: r.region_id, short_th: r.short_th, value: yVal });
+      }
+    });
+    if (!yoyRows.length) return { headline: null, bullets: [], caution: 'ไม่มีข้อมูล', empty: null };
+    yoyRows.sort((a, b) => b.value - a.value);
+    const top = yoyRows[0];
+    const bottom = yoyRows[yoyRows.length - 1];
+
+    const natCur = DB.hpi_annual.find(a => a.year_be === year && a.region_id === 0 && a.property_type_id === pt);
+    const natPrev = DB.hpi_annual.find(a => a.year_be === year - 1 && a.region_id === 0 && a.property_type_id === pt);
+    const natVal = (natCur && natPrev && natPrev.index_mean12)
+      ? roundVal(100.0 * (natCur.index_mean12 / natPrev.index_mean12 - 1.0), 2)
+      : 0.0;
+
+    const headline = `ปี ${year} ราคาเพิ่มจากปีก่อน ${fmtSignPct(natVal)} (ทั้งประเทศ) สูงสุด${top.short_th} ${fmtSignPct(top.value)} ต่ำสุด${bottom.short_th} ${fmtSignPct(bottom.value)}`;
+    const bullets = [
+      `เรียงตาม YoY ปี ${year}: ` + yoyRows.map(r => `${r.short_th} ${fmtSignPct(r.value)}`).join(' · '),
+      `ช่วง 2555–2568 ช่องที่ติดลบมี 3 ช่อง: เหนือ ปี 2562 (${SUMMARY_MINUS}2.23%) ใต้ ปี 2562 (${SUMMARY_MINUS}0.39%) ใต้ ปี 2564 (${SUMMARY_MINUS}1.41%)`,
+    ];
+
+    return { headline: headline, bullets: bullets, caution: 'ดัชนีบอกการเปลี่ยนแปลง ไม่ใช่ระดับราคาบ้านเป็นบาท', empty: null };
+  }
+
+  function _buildT3RatioSummary(f, meta) {
+    const y0 = f.y0;
+    const y1 = f.y1;
+    const pt = f.pt;
+    const region = f.region;
+    const scope = getScopeName(meta, region);
+
+    if (y0 === y1) {
+      return {
+        headline: `ปี ${y0} เป็นปีฐาน (ดัชนี = 100) จึงยังไม่มีอัตราเติบโต`,
+        bullets: ['อัตราส่วนคำนวณจากการเปลี่ยนแปลงของดัชนีทั้งสองเทียบปีเริ่มต้น'],
+        caution: 'ดัชนีบอกการเปลี่ยนแปลงเทียบต้นช่วง ไม่ใช่ราคาบ้านเป็นบาท',
+        empty: null,
+      };
+    }
+
+    const rowsY1 = [];
+    meta.regions.forEach(reg => {
+      const rid = reg.region_id;
+      const incBaseRow = DB.income.find(i => i.year_be === y0 && i.region_id === rid && i.area_type_id === 0);
+      const hpiBaseRow = DB.hpi_annual.find(a => a.year_be === y0 && a.region_id === rid && a.property_type_id === pt);
+      const incRow = DB.income.find(i => i.year_be === y1 && i.region_id === rid && i.area_type_id === 0);
+      const hpiRow = DB.hpi_annual.find(a => a.year_be === y1 && a.region_id === rid && a.property_type_id === pt);
+
+      if (incBaseRow && hpiBaseRow && incRow && hpiRow && incBaseRow.monthly_income && hpiBaseRow.index_mean12) {
+        const newInc = roundVal(100.0 * incRow.monthly_income / incBaseRow.monthly_income, 1);
+        const newHpi = roundVal(100.0 * hpiRow.index_mean12 / hpiBaseRow.index_mean12, 1);
+        const newPti = newInc ? roundVal(100.0 * newHpi / newInc, 1) : 100.0;
+        rowsY1.push({
+          region_id: rid,
+          short_th: reg.short_th,
+          is_national: reg.is_national,
+          income_index: newInc,
+          hpi_index: newHpi,
+          price_to_income_index: newPti,
+        });
+      }
+    });
+
+    const rid = region !== null ? region : 0;
+    const targetRow = rowsY1.find(r => r.region_id === rid) || rowsY1.find(r => r.region_id === 0);
+    const natRow = rowsY1.find(r => r.region_id === 0);
+    if (!targetRow) return { headline: null, bullets: [], caution: 'ไม่มีข้อมูล', empty: null };
+
+    const pti = targetRow.price_to_income_index;
+    const hpi = targetRow.hpi_index;
+    const inc = targetRow.income_index;
+    const pct = Math.round(Math.abs(pti - 100.0));
+
+    let headline = '';
+    if (pti >= 100.0) {
+      headline = `ปี ${y1} ราคาบ้านโตเร็วกว่ารายได้ ${pct}% เทียบปี ${y0} (${scope}) จึงซื้อยากขึ้น`;
+    } else {
+      headline = `ปี ${y1} ราคาบ้านโตช้ากว่ารายได้ ${pct}% เทียบปี ${y0} (${scope}) จึงซื้อง่ายขึ้น`;
+    }
+
+    const bullets = [
+      `ดัชนีราคาบ้าน ${hpi.toFixed(1)} ÷ ดัชนีรายได้ ${inc.toFixed(1)} = ${pti.toFixed(1)}`,
+    ];
+
+    const regionalY1 = rowsY1.filter(r => !r.is_national && r.price_to_income_index !== null);
+    if (regionalY1.length > 0) {
+      regionalY1.sort((a, b) => b.price_to_income_index - a.price_to_income_index);
+      const hardest = regionalY1[0];
+      const easiest = regionalY1[regionalY1.length - 1];
+      if (region !== null && region > 0) {
+        const rank = regionalY1.findIndex(r => r.region_id === region) + 1;
+        const natPti = natRow ? natRow.price_to_income_index.toFixed(1) : '—';
+        bullets.push(`${scope} ซื้อยากขึ้นเป็นอันดับ ${rank} จาก 5 ภาค (ดัชนี ${pti.toFixed(1)} เทียบทั้งประเทศ ${natPti})`);
+      } else {
+        bullets.push(`ยากขึ้นมากสุดที่${hardest.short_th} (${hardest.price_to_income_index.toFixed(1)}) น้อยสุดที่${easiest.short_th} (${easiest.price_to_income_index.toFixed(1)})`);
+      }
+    }
+
+    const caution = 'ดัชนีบอกการเปลี่ยนแปลงเทียบต้นช่วง ไม่ใช่ราคาบ้านเป็นบาท · นิยามกทม.+ปริมณฑลของ สสช. กับ ธปท. อาจไม่ตรงกัน';
+    return { headline: headline, bullets: bullets, caution: caution, empty: null };
+  }
+
+  function _buildT3CagrSummary(f, meta) {
+    const y0 = f.y0;
+    const y1 = f.y1;
+    const pt = f.pt;
+    const region = f.region;
+    const cagrView = f.cagr_view;
+    const scope = getScopeName(meta, region);
+
+    if (pt === 3 && (region === 3 || region === 4)) {
+      return { headline: null, bullets: [], caution: null, empty: 'ไม่มีข้อมูลทาวน์เฮ้าส์ของภาคนี้ (ธปท. ไม่มีชุดข้อมูลนี้)' };
+    }
+
+    if (y0 === y1) {
+      return {
+        headline: `ปี ${y0} เป็นปีฐาน (ดัชนี = 100) จึงยังไม่มีอัตราเติบโต`,
+        bullets: ['กรุณาเลือกช่วงปีเริ่มต้นและสิ้นสุดต่างกันเพื่อคำนวณอัตราเติบโตเฉลี่ยสะสม (CAGR)'],
+        caution: `คำนวณจากอัตราเติบโตเฉลี่ยสะสมต่อปี (CAGR) ระหว่างปี ${y0} และ ${y1}`,
+        empty: null,
+      };
+    }
+
+    const years = y1 - y0;
+    const rid = region !== null ? region : 0;
+
+    const inc0 = DB.income.find(i => i.year_be === y0 && i.region_id === rid && i.area_type_id === 0);
+    const inc1 = DB.income.find(i => i.year_be === y1 && i.region_id === rid && i.area_type_id === 0);
+    const hpi0 = DB.hpi_annual.find(a => a.year_be === y0 && a.region_id === rid && a.property_type_id === pt);
+    const hpi1 = DB.hpi_annual.find(a => a.year_be === y1 && a.region_id === rid && a.property_type_id === pt);
+
+    const incC = (inc0 && inc1 && inc0.monthly_income) ? (cagr_pct(inc0.monthly_income, inc1.monthly_income, years) || 0.0) : 0.0;
+    const hpiC = (hpi0 && hpi1 && hpi0.index_mean12) ? (cagr_pct(hpi0.index_mean12, hpi1.index_mean12, years) || 0.0) : 0.0;
+    const gap = roundVal(hpiC - incC, 2);
+
+    let headline = '';
+    const bullets = [];
+
+    if (cagrView === 'by_type') {
+      if (region === 3 || region === 4) {
+        headline = `${scope} ดัชนีรวมทุกประเภทเท่ากับบ้านเดี่ยว โต ${hpiC.toFixed(2)}%/ปี เทียบรายได้ ${incC.toFixed(2)}%/ปี`;
+        bullets.push('ภาคนี้มีเฉพาะบ้านเดี่ยว ดัชนีรวมเท่ากับบ้านเดี่ยว ไม่มีข้อมูลทาวน์เฮ้าส์');
+      } else {
+        let thC = 0.0;
+        let sdC = 0.0;
+        let allC = hpiC;
+
+        const th0 = DB.hpi_annual.find(a => a.year_be === y0 && a.region_id === rid && a.property_type_id === 3);
+        const th1 = DB.hpi_annual.find(a => a.year_be === y1 && a.region_id === rid && a.property_type_id === 3);
+        if (th0 && th1 && th0.index_mean12) thC = cagr_pct(th0.index_mean12, th1.index_mean12, years) || 0.0;
+
+        const sd0 = DB.hpi_annual.find(a => a.year_be === y0 && a.region_id === rid && a.property_type_id === 2);
+        const sd1 = DB.hpi_annual.find(a => a.year_be === y1 && a.region_id === rid && a.property_type_id === 2);
+        if (sd0 && sd1 && sd0.index_mean12) sdC = cagr_pct(sd0.index_mean12, sd1.index_mean12, years) || 0.0;
+
+        headline = `${scope} ทาวน์เฮ้าส์โต ${thC.toFixed(2)}%/ปี บ้านเดี่ยว ${sdC.toFixed(2)}%/ปี รวมทุกประเภท ${allC.toFixed(2)}%/ปี เทียบรายได้ ${incC.toFixed(2)}%/ปี`;
+        bullets.push(`ทาวน์เฮ้าส์เติบโตเฉลี่ยสะสม ${thC.toFixed(2)}%/ปี`);
+        bullets.push(`บ้านเดี่ยวเติบโตเฉลี่ยสะสม ${sdC.toFixed(2)}%/ปี`);
+        bullets.push(`รายได้เฉลี่ยเติบโต ${fmtCagr(incC)}`);
+      }
+    } else if (cagrView === 'summary') {
+      headline = `ช่วง ${y0}–${y1} ${scope} ราคาบ้านโตเฉลี่ย ${fmtCagr(hpiC)} เทียบรายได้ ${fmtCagr(incC)}`;
+      bullets.push(`ส่วนต่างอัตราเติบโต (ราคาบ้าน − รายได้) อยู่ที่ ${fmtDiffPoints(gap)}`);
+    } else {
+      // Default: by_region
+      headline = `ราคาบ้านโต ${fmtCagr(hpiC)} เทียบรายได้ ${fmtCagr(incC)} (ช่องว่าง ${fmtDiffPoints(gap)})`;
+
+      const regGaps = [];
+      meta.regions.filter(r => !r.is_national && r.region_id > 0).forEach(r => {
+        const i0 = DB.income.find(x => x.year_be === y0 && x.region_id === r.region_id && x.area_type_id === 0);
+        const i1 = DB.income.find(x => x.year_be === y1 && x.region_id === r.region_id && x.area_type_id === 0);
+        const h0 = DB.hpi_annual.find(x => x.year_be === y0 && x.region_id === r.region_id && x.property_type_id === pt);
+        const h1 = DB.hpi_annual.find(x => x.year_be === y1 && x.region_id === r.region_id && x.property_type_id === pt);
+
+        if (i0 && i1 && h0 && h1 && i0.monthly_income && h0.index_mean12) {
+          const ic = cagr_pct(i0.monthly_income, i1.monthly_income, years) || 0.0;
+          const hc = cagr_pct(h0.index_mean12, h1.index_mean12, years) || 0.0;
+          regGaps.push({
+            region_id: r.region_id,
+            short_th: r.short_th,
+            inc: ic,
+            hpi: hc,
+            gap: roundVal(hc - ic, 2),
+          });
+        }
+      });
+
+      regGaps.sort((a, b) => b.gap - a.gap);
+      const maxGap = regGaps[0];
+      const bmr = regGaps.find(x => x.short_th === 'กทม.+ปริมณฑล');
+
+      if (bmr) {
+        const incBmrStr = bmr.inc < 0 ? `ติดลบ ${SUMMARY_MINUS}${Math.abs(bmr.inc).toFixed(2)}%/ปี` : `${bmr.inc.toFixed(2)}%/ปี`;
+        bullets.push(`กทม.+ปริมณฑล: รายได้${incBmrStr} ขณะที่ราคาบ้านโต ${bmr.hpi.toFixed(2)}%/ปี`);
+      }
+      if (maxGap) {
+        bullets.push(`ช่องว่างมากสุดที่${maxGap.short_th} (${fmtDiffPoints(maxGap.gap)}) โดยราคาบ้านโต ${maxGap.hpi.toFixed(2)}%/ปี เทียบรายได้ ${maxGap.inc.toFixed(2)}%/ปี`);
+      }
+      if (region !== null && region > 0) {
+        const curG = regGaps.find(x => x.region_id === region);
+        if (curG) {
+          const rank = regGaps.findIndex(x => x.region_id === region) + 1;
+          bullets.unshift(`${curG.short_th} มีช่องว่างการเติบโตเป็นอันดับ ${rank} จาก 5 ภาค (${fmtDiffPoints(curG.gap)})`);
+        }
+      }
+    }
+
+    const caution = `คำนวณจากอัตราเติบโตเฉลี่ยสะสมต่อปี (CAGR) ระหว่างปี ${y0} และ ${y1}`;
+    return { headline: headline, bullets: bullets, caution: caution, empty: null };
+  }
+
+  function getSummary(tabId, chartId, params = {}) {
+    const tab = parseInt(tabId, 10);
+    if (!SUMMARY_VALID_CHART_IDS[tab] || !SUMMARY_VALID_CHART_IDS[tab].has(chartId)) {
+      throw new Error(`รหัสกราฟ '${chartId}' ไม่ถูกต้องสำหรับแท็บ ${tab}`);
+    }
+
+    const meta = DB.meta;
+    const year = params.year !== undefined ? parseInt(params.year, 10) : 2568;
+    const y0 = params.y0 !== undefined ? parseInt(params.y0, 10) : 2554;
+    const y1 = params.y1 !== undefined ? parseInt(params.y1, 10) : 2568;
+    const region = (params.region !== undefined && params.region !== null && params.region !== '') ? parseInt(params.region, 10) : null;
+    const area = params.area !== undefined ? parseInt(params.area, 10) : 0;
+    const pt = params.pt !== undefined ? parseInt(params.pt, 10) : 1;
+    const metric = params.metric || (tab === 2 ? 'hpi' : 'income');
+    const grain = params.grain || 'yearly';
+    const cagrView = params.cagr_view || 'summary';
+
+    const f = { year, y0, y1, region, area, pt, metric, grain, cagr_view: cagrView };
+    const title = SUMMARY_CHART_TITLES[chartId] || '';
+    const scope = getScopeName(meta, region);
+
+    const filtersList = [];
+    if (tab === 1) {
+      if (chartId === 't1_map' || chartId === 't1_gap' || chartId === 't1_sources') {
+        filtersList.push({ label: 'ปี', value: `ปี ${year}` });
+      } else if (chartId === 't1_trend') {
+        filtersList.push({ label: 'ช่วงปี', value: `${y0}–${y1}` });
+      }
+      filtersList.push({ label: 'พื้นที่', value: scope });
+      if (chartId !== 't1_gap') {
+        filtersList.push({ label: 'เขต', value: SUMMARY_AREA_NAMES[area] || 'รวมทุกเขต' });
+      }
+    } else if (tab === 2) {
+      if (chartId === 't2_map' || chartId === 't2_yoy') {
+        filtersList.push({ label: 'ปี', value: `ปี ${year}` });
+      } else if (chartId === 't2_trend') {
+        filtersList.push({ label: 'ความถี่', value: grain === 'monthly' ? 'รายเดือน' : 'รายปี' });
+        filtersList.push({ label: 'ช่วงปี', value: `${y0}–${y1}` });
+      }
+      filtersList.push({ label: 'ประเภทบ้าน', value: SUMMARY_PROPERTY_TYPE_NAMES[pt] || 'รวมทุกประเภท' });
+      filtersList.push({ label: 'พื้นที่', value: scope });
+    } else if (tab === 3) {
+      filtersList.push({ label: 'ช่วงปี', value: `${y0}–${y1}` });
+      filtersList.push({ label: 'ประเภทบ้าน', value: SUMMARY_PROPERTY_TYPE_NAMES[pt] || 'รวมทุกประเภท' });
+      filtersList.push({ label: 'พื้นที่', value: scope });
+      if (chartId === 't3_cagr') {
+        filtersList.push({ label: 'มุมมอง', value: SUMMARY_CAGR_VIEW_NAMES[cagrView] || 'แยกภาค' });
+      }
+    }
+
+    let res = null;
+    if (chartId === 't1_map') res = _buildT1MapSummary(f, meta);
+    else if (chartId === 't1_trend') res = _buildT1TrendSummary(f, meta);
+    else if (chartId === 't1_gap') res = _buildT1GapSummary(f, meta);
+    else if (chartId === 't1_sources') res = _buildT1SourcesSummary(f, meta);
+    else if (chartId === 't2_map') res = _buildT2MapSummary(f, meta);
+    else if (chartId === 't2_trend') res = _buildT2TrendSummary(f, meta);
+    else if (chartId === 't2_yoy') res = _buildT2YoySummary(f, meta);
+    else if (chartId === 't3_ratio') res = _buildT3RatioSummary(f, meta);
+    else if (chartId === 't3_cagr') res = _buildT3CagrSummary(f, meta);
+
+    return {
+      chart_id: chartId,
+      title: title,
+      filters: filtersList,
+      headline: res ? res.headline : null,
+      bullets: res ? res.bullets : [],
+      caution: res ? res.caution : null,
+      empty: res ? res.empty : null,
+    };
+  }
+
   function getTab(tabId, params) {
     if (tabId === 1) return handleTab1(params);
     if (tabId === 2) return handleTab2(params);
@@ -1844,6 +2624,7 @@
     isReady: isReady,
     getMeta: getMeta,
     getTab: getTab,
+    getSummary: getSummary,
     cagr_pct: cagr_pct,
     pct_change: pct_change,
   };

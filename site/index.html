@@ -122,6 +122,33 @@
     </div>
   </dialog>
 
+  <!-- ──────────────── Summary Popup Modal (§12.3) ──────────────── -->
+  <dialog id="summary-dialog" class="summary-dialog" aria-labelledby="summary-dialog-title" aria-modal="true">
+    <div class="summary-dialog-card">
+      <div class="summary-dialog-header">
+        <div class="summary-dialog-header-text">
+          <h2 class="summary-dialog-title" id="summary-dialog-title">สรุปข้อมูล</h2>
+          <div class="summary-chips-row" id="summary-chips-row"></div>
+        </div>
+        <button type="button" class="summary-dialog-close" id="summary-dialog-close" aria-label="ปิด">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="summary-dialog-body" id="summary-dialog-body">
+        <div class="summary-headline" id="summary-headline"></div>
+        <ul class="summary-bullets" id="summary-bullets"></ul>
+        <div class="summary-caution" id="summary-caution" style="display: none;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span id="summary-caution-text"></span>
+        </div>
+        <div class="summary-empty" id="summary-empty" style="display: none;"></div>
+      </div>
+      <div class="summary-dialog-footer">
+        <span>สร้างจากข้อมูลที่แสดงในกราฟนี้ ตามตัวกรองปัจจุบัน</span>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Engine & App Scripts -->
   <script src="js/engine.js"></script>
   <script src="js/app.js"></script>
