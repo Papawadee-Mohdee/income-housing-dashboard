@@ -253,7 +253,8 @@ def fig_trend(
             "tickformat": ",.0f",
         },
         "height": 320,
-        "hovermode": "x unified",
+        "hovermode": "closest",
+        "hoverdistance": 30,
         "shapes": shapes,
         "annotations": annotations,
     })

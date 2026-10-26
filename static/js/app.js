@@ -1,5 +1,6 @@
 /**
- * Income × Housing Dashboard — Frontend Client v2
+ * Income × Housing Dashboard — Frontend Client v2 (Static Site Edition)
+ * Runs 100% in browser via DashboardEngine — No FastAPI server required!
  */
 
 (function () {
@@ -111,83 +112,71 @@
 
   // ──────────────── Theme Handling ────────────────
   function initTheme() {
-    const params = new URLSearchParams(window.location.search);
-    const urlTheme = params.get('theme');
-    const saved = localStorage.getItem('ihd-theme');
-    if (urlTheme && (urlTheme === 'dark' || urlTheme === 'light')) {
-      state.theme = urlTheme;
-    } else if (saved) {
-      state.theme = saved;
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      state.theme = 'light';
-    } else {
-      state.theme = 'dark';
+    const toggleBtn = document.getElementById('theme-toggle-btn');
+    if (!toggleBtn) return;
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      state.theme = theme;
+      localStorage.setItem('ihd-theme', theme);
+      toggleBtn.innerHTML = theme === 'dark' ? ICONS.sun : ICONS.moon;
+      updateUrl();
+      if (state.tabData) {
+        queueFetch();
+      }
     }
+
     applyTheme(state.theme);
 
-    const toggleBtn = document.getElementById('theme-toggle-btn');
-    if (toggleBtn) {
-      toggleBtn.onclick = () => {
-        state.theme = state.theme === 'dark' ? 'light' : 'dark';
-        applyTheme(state.theme);
-        updateUrl();
-        queueFetch();
-      };
-    }
+    toggleBtn.addEventListener('click', () => {
+      const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
+      applyTheme(nextTheme);
+    });
   }
 
-  function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('ihd-theme', theme);
-    const toggleBtn = document.getElementById('theme-toggle-btn');
-    if (toggleBtn) {
-      toggleBtn.innerHTML = theme === 'dark' ? ICONS.sun : ICONS.moon;
-      toggleBtn.setAttribute('aria-label', theme === 'dark' ? 'สลับเป็นโหมดสว่าง' : 'สลับเป็นโหมดมืด');
-    }
-  }
-
-  // ──────────────── API Fetching ────────────────
+  // ──────────────── Data Fetching (Static Engine) ────────────────
   async function fetchMeta() {
     try {
-      const res = await fetch('/api/meta');
-      if (!res.ok) throw new Error('Failed to load meta');
-      state.meta = await res.json();
+      if (window.DASHBOARD_DATA && window.DASHBOARD_DATA.meta) {
+        DashboardEngine.init(window.DASHBOARD_DATA);
+      } else {
+        const res = await fetch('data/dashboard_data.json');
+        if (!res.ok) throw new Error('Failed to load data');
+        const dbData = await res.json();
+        DashboardEngine.init(dbData);
+      }
+      state.meta = DashboardEngine.getMeta();
       renderAsOfBadge();
       renderControlBar();
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load metadata:', err);
     }
   }
 
   function queueFetch() {
     if (fetchTimeout) clearTimeout(fetchTimeout);
-    fetchTimeout = setTimeout(fetchTabData, 100);
+    fetchTimeout = setTimeout(fetchTabData, 20);
   }
 
   async function fetchTabData() {
-    const params = new URLSearchParams();
-    params.set('year', state.year);
-    params.set('y0', state.y0);
-    params.set('y1', state.y1);
-    if (state.region !== null) params.set('region', state.region);
-    params.set('area', state.area);
-    params.set('pt', state.pt);
-    params.set('metric', state.metric);
-    params.set('grain', state.grain);
-    params.set('cagr_view', state.cagr_view);
-    params.set('theme', state.theme);
-
+    if (!DashboardEngine.isReady()) return;
     try {
-      const res = await fetch(`/api/tab/${state.tab}?${params.toString()}`);
-      if (!res.ok) {
-        const errData = await res.json();
-        alert(errData.detail || 'เกิดข้อผิดพลาดในการดึงข้อมูล');
-        return;
-      }
-      state.tabData = await res.json();
+      const data = DashboardEngine.getTab(state.tab, {
+        year: state.year,
+        y0: state.y0,
+        y1: state.y1,
+        region: state.region,
+        area: state.area,
+        pt: state.pt,
+        metric: state.metric,
+        grain: state.grain,
+        cagr_view: state.cagr_view,
+        theme: state.theme,
+      });
+      state.tabData = data;
       renderDashboard();
     } catch (err) {
-      console.error('Fetch error:', err);
+      console.error('Error generating tab data:', err);
     }
   }
 
@@ -205,13 +194,12 @@
 
     container.innerHTML = '';
 
-    // Title
     const title = document.createElement('div');
     title.className = 'sidebar-filters-title';
     title.textContent = 'ตัวกรองข้อมูล';
     container.appendChild(title);
 
-    // 1. Region Radio Chips with color dots (Grid 2-col, National spans 2)
+    // 1. Region Radio Chips
     const regionGroup = document.createElement('div');
     regionGroup.className = 'sidebar-control-group';
     regionGroup.innerHTML = `
@@ -266,7 +254,6 @@
         };
       });
     } else if (state.tab === 3) {
-      // Tab 3: Year Range (Start & End)
       const rangeGroup = document.createElement('div');
       rangeGroup.className = 'sidebar-control-group';
       rangeGroup.innerHTML = `
@@ -307,12 +294,12 @@
       };
     }
 
-    // 3. Tab-Specific Controls (Area or Property Type)
+    // 3. Tab-Specific Controls
     if (state.tab === 1) {
       const areaGroup = document.createElement('div');
       areaGroup.className = 'sidebar-control-group';
       areaGroup.innerHTML = `
-        <span class="sidebar-control-label">ประเภทเขต:</span>
+        <span class="sidebar-control-label">ประเภทเขตที่อยู่อาศัย:</span>
         <select class="sidebar-select" id="area-select">
           ${state.meta.area_types.map(a => `<option value="${a.area_type_id}" ${state.area === a.area_type_id ? 'selected' : ''}>${a.name_th}</option>`).join('')}
         </select>
@@ -340,12 +327,12 @@
       };
     }
 
-    // Clear Filters Ghost Button
+    // 4. Ghost Reset Button
     if (hasNonDefaultFilters()) {
-      const clearBtn = document.createElement('button');
-      clearBtn.className = 'btn-sidebar-clear';
-      clearBtn.innerHTML = `${ICONS.rotateCcw} <span>ล้างตัวกรองทั้งหมด</span>`;
-      clearBtn.onclick = () => {
+      const resetBtn = document.createElement('button');
+      resetBtn.className = 'sidebar-reset-btn';
+      resetBtn.innerHTML = `${ICONS.rotateCcw}<span>ล้างตัวกรองทั้งหมด</span>`;
+      resetBtn.onclick = () => {
         state.region = null;
         state.area = 0;
         state.pt = 1;
@@ -359,7 +346,7 @@
         renderControlBar();
         queueFetch();
       };
-      container.appendChild(clearBtn);
+      container.appendChild(resetBtn);
     }
   }
 
@@ -367,94 +354,80 @@
     if (!state.tabData) return;
     const data = state.tabData;
 
-    // Status Line
     const statusLineEl = document.getElementById('tab-status-line');
     if (statusLineEl && data.status_line) {
       statusLineEl.textContent = data.status_line;
     }
 
-    // ──────────────── Render 4 KPI Cards ────────────────
-    const kpiContainer = document.getElementById('kpi-container');
-    if (kpiContainer && data.kpis) {
-      kpiContainer.innerHTML = '';
-      data.kpis.forEach((kpi, idx) => {
-        const card = document.createElement('div');
-        card.className = 'kpi-card';
+    renderKpis(data.kpis || []);
 
-        let chipHtml = '';
-        if (kpi.delta) {
-          const isUp = kpi.delta.direction === 'up';
-          const icon = isUp ? ICONS.trendingUp : ICONS.trendingDown;
-          const cls = isUp ? 'kpi-chip-positive' : 'kpi-chip-negative';
-          chipHtml = `
-            <div class="kpi-delta-row">
-              <span class="kpi-chip ${cls}">${icon} <span>${kpi.delta.value}${kpi.delta.unit} (${kpi.delta.vs})</span></span>
-            </div>
-          `;
-        } else if (kpi.status) {
-          let cls = 'kpi-chip-neutral';
-          let icon = '';
-          if (kpi.status === 'harder') {
-            cls = 'kpi-chip-negative';
-            icon = ICONS.trendingUp;
-          } else if (kpi.status === 'easier') {
-            cls = 'kpi-chip-positive';
-            icon = ICONS.trendingDown;
-          }
-          chipHtml = `
-            <div class="kpi-delta-row">
-              <span class="kpi-chip ${cls}">${icon} <span>${kpi.unit}</span></span>
-            </div>
-          `;
-        }
-
-        const iconBox = idx === 0 ? ICONS.wallet : (idx === 1 ? ICONS.activity : (idx === 2 ? ICONS.house : ICONS.scale));
-
-        card.innerHTML = `
-          <div class="kpi-top">
-            <div class="kpi-icon-box">${iconBox}</div>
-            <span class="kpi-label">${kpi.label}</span>
-          </div>
-          <div class="kpi-value-row">
-            <span class="kpi-value tabular-nums">${typeof kpi.value === 'number' ? kpi.value.toLocaleString('th-TH') : kpi.value}</span>
-          </div>
-          ${kpi.subline ? `<div class="kpi-subline">${kpi.subline}</div>` : `<div class="kpi-unit">${kpi.unit}</div>`}
-          ${chipHtml}
-        `;
-        kpiContainer.appendChild(card);
-      });
-    }
-
-    // ──────────────── Render Charts (Tabs 1 & 2 vs Tab 3) ────────────────
-    const chartsContainer = document.getElementById('charts-container');
-    if (!chartsContainer) return;
-
-    chartsContainer.innerHTML = '';
+    const chartContainer = document.getElementById('charts-container');
+    if (!chartContainer) return;
+    chartContainer.innerHTML = '';
 
     if (state.tab === 1 || state.tab === 2) {
-      renderTab1OrTab2Charts(chartsContainer, data);
+      renderTab12Charts(chartContainer, data);
     } else if (state.tab === 3) {
-      renderTab3Charts(chartsContainer, data);
+      renderTab3Charts(chartContainer, data);
     }
 
-    // Notes list
-    const notesContainer = document.getElementById('notes-list');
-    if (notesContainer && data.notes) {
-      notesContainer.innerHTML = data.notes.map(n => `<div>• ${n}</div>`).join('');
-    }
+    renderNotes(data.notes || []);
   }
 
-  // ──────────────── Tabs 1 & 2 Charts Rendering ────────────────
-  function renderTab1OrTab2Charts(container, data) {
-    const grid = document.createElement('div');
-    grid.className = 'main-charts-grid';
+  function renderKpis(kpis) {
+    const container = document.getElementById('kpi-container');
+    if (!container) return;
+    container.innerHTML = '';
 
-    // Left Column: Map Card
+    kpis.forEach(k => {
+      const card = document.createElement('div');
+      card.className = 'kpi-card';
+
+      let formattedValue = k.value;
+      if (typeof k.value === 'number') {
+        formattedValue = k.value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      }
+
+      let deltaHtml = '';
+      if (k.delta && typeof k.delta.value === 'number') {
+        const isUp = k.delta.direction === 'up';
+        const deltaClass = isUp ? 'delta-up' : 'delta-down';
+        const deltaIcon = isUp ? ICONS.trendingUp : ICONS.trendingDown;
+        const sign = isUp ? '+' : '-';
+        deltaHtml = `
+          <div class="kpi-delta-chip ${deltaClass}">
+            ${deltaIcon}
+            <span>${sign}${k.delta.value.toFixed(1)}${k.delta.unit || ''} vs ${k.delta.vs || ''}</span>
+          </div>
+        `;
+      }
+
+      let sublineHtml = '';
+      if (k.subline) {
+        sublineHtml = `<div class="kpi-subline">${k.subline}</div>`;
+      }
+
+      card.innerHTML = `
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value-row">
+          <span class="kpi-value">${formattedValue}</span>
+          ${k.unit ? `<span class="kpi-unit">${k.unit}</span>` : ''}
+        </div>
+        ${sublineHtml}
+        ${deltaHtml}
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function renderTab12Charts(container, data) {
+    const grid = document.createElement('div');
+    grid.className = 'charts-main-grid main-charts-grid';
+
+    // Left Column: Choropleth Map Card
     const mapCard = document.createElement('div');
     mapCard.className = 'chart-card';
-    mapCard.id = 'map-card';
-
-    const mapTitle = state.tab === 1 ? 'แผนที่รายได้เฉลี่ยรายภาค' : 'แผนที่ดัชนีราคาบ้านรายภาค';
+    const mapTitle = state.tab === 1 ? 'แผนที่รายได้เฉลี่ยตามภาค' : 'แผนที่ดัชนีราคาบ้านตามภาค';
     let mapSegmentedHtml = '';
     if (state.tab === 1) {
       mapSegmentedHtml = `
@@ -551,7 +524,7 @@
     container.appendChild(grid);
 
     // Bottom Full Width: Treemap (Tab 1 only)
-    if (state.tab === 1 && data.charts.treemap) {
+    if (state.tab === 1 && data.charts.treemap && data.charts.treemap.figure) {
       const treemapCard = document.createElement('div');
       treemapCard.className = 'chart-card chart-card-full';
       const treeObj = data.charts.treemap;
@@ -613,23 +586,23 @@
     renderPlotly('plot-choropleth', choroObj.figure, true);
     renderPlotly('plot-trend', trendObj.figure, false);
     renderPlotly('plot-heatmap', heatmapObj.figure, false);
-    if (state.tab === 1 && data.charts.treemap) {
+    if (state.tab === 1 && data.charts.treemap && data.charts.treemap.figure) {
       renderPlotly('plot-treemap', data.charts.treemap.figure, false);
     }
   }
 
   // ──────────────── Tab 3 Charts Rendering ────────────────
   function renderTab3Charts(container, data) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'tab3-charts-container';
+    const grid = document.createElement('div');
+    grid.className = 'tab3-charts-container tab3-charts-grid';
 
-    // 1. Hero Price-to-Income Line Chart
+    // Chart 1: Hero Line Chart (Price-to-Income)
     const heroCard = document.createElement('div');
     heroCard.className = 'chart-card chart-card-full';
     const heroObj = data.charts.hero;
     heroCard.innerHTML = `
       <div class="chart-header">
-        <h3 class="chart-title">1 · กราฟเส้นอัตราส่วนราคาบ้านต่อรายได้ (Price-to-Income Ratio Trend)</h3>
+        <h3 class="chart-title">1 · แนวโน้มดัชนีราคาบ้านเทียบกับรายได้ (Price-to-Income Ratio)</h3>
         <div class="chart-header-actions">
           ${renderSummaryBtn(3, 't3_ratio')}
         </div>
@@ -638,13 +611,13 @@
       <div class="plotly-container" id="plot-hero"></div>
       <div class="chart-note">${heroObj.note || ''}</div>
     `;
-    wrapper.appendChild(heroCard);
+    grid.appendChild(heroCard);
 
-    // Row 2: 2 Columns for Graph 2 (Gap Area) and Graph 3 (CAGR)
-    const midGrid = document.createElement('div');
-    midGrid.className = 'tab3-mid-grid';
+    // Row 2: 2 Columns (Gap Area and CAGR bar)
+    const row2 = document.createElement('div');
+    row2.className = 'tab3-mid-grid tab3-row-two';
 
-    // 2. Affordability Gap Area Chart
+    // Chart 2: Affordability Gap Area
     const gapCard = document.createElement('div');
     gapCard.className = 'chart-card';
     const gapObj = data.charts.gap_area;
@@ -656,9 +629,9 @@
       <div class="plotly-container" id="plot-gap-area"></div>
       <div class="chart-note">${gapObj.note || ''}</div>
     `;
-    midGrid.appendChild(gapCard);
+    row2.appendChild(gapCard);
 
-    // 3. CAGR Comparison Chart
+    // Chart 3: CAGR Grouped Bar
     const cagrCard = document.createElement('div');
     cagrCard.className = 'chart-card';
     const cagrObj = data.charts.cagr;
@@ -668,8 +641,8 @@
         <div class="chart-header-actions">
           <div class="segmented-control" id="cagr-view-control">
             <button class="segmented-btn ${state.cagr_view === 'summary' ? 'active' : ''}" data-view="summary">ภาพรวม</button>
-            <button class="segmented-btn ${state.cagr_view === 'by_region' ? 'active' : ''}" data-view="by_region">แยกตามภาค</button>
-            <button class="segmented-btn ${state.cagr_view === 'by_type' ? 'active' : ''}" data-view="by_type">แยกตามประเภทบ้าน</button>
+            <button class="segmented-btn ${state.cagr_view === 'by_region' ? 'active' : ''}" data-view="by_region">แยกภาค</button>
+            <button class="segmented-btn ${state.cagr_view === 'by_type' ? 'active' : ''}" data-view="by_type">แยกบ้าน</button>
           </div>
           ${renderSummaryBtn(3, 't3_cagr')}
         </div>
@@ -678,27 +651,27 @@
       <div class="plotly-container" id="plot-cagr"></div>
       <div class="chart-note">${cagrObj.note || ''}</div>
     `;
-    midGrid.appendChild(cagrCard);
+    row2.appendChild(cagrCard);
 
-    wrapper.appendChild(midGrid);
+    grid.appendChild(row2);
 
-    // 4. Growth Balance Scatter Plot
+    // Chart 4: Growth Balance Scatter Plot (Full Width)
     const scatterCard = document.createElement('div');
     scatterCard.className = 'chart-card chart-card-full';
     const scatterObj = data.charts.scatter;
     scatterCard.innerHTML = `
       <div class="chart-header">
-        <h3 class="chart-title">4 · ประเมินความสมดุลการเติบโตของพื้นที่ (Income vs House Price Growth)</h3>
+        <h3 class="chart-title">4 · สมดุลการเติบโตรายได้ vs ราคาบ้าน (Growth Balance Matrix)</h3>
       </div>
       <div class="chart-read-guide">${scatterObj.read_guide || ''}</div>
       <div class="plotly-container" id="plot-scatter"></div>
       <div class="chart-note">${scatterObj.note || ''}</div>
     `;
-    wrapper.appendChild(scatterCard);
+    grid.appendChild(scatterCard);
 
-    container.appendChild(wrapper);
+    container.appendChild(grid);
 
-    // Wire up Graph 3 toggle switch
+    // Events
     const cagrSeg = cagrCard.querySelector('#cagr-view-control');
     if (cagrSeg) {
       cagrSeg.querySelectorAll('button').forEach(btn => {
@@ -716,6 +689,54 @@
     renderPlotly('plot-scatter', scatterObj.figure, false);
   }
 
+  // ──────────────── Region Extraction & Cross-Filtering Helpers ────────────────
+  const REGION_MAP = {
+    'ทั่วประเทศ': 0,
+    'กทม.+ปริมณฑล': 1,
+    'กลาง': 2,
+    'เหนือ': 3,
+    'อีสาน': 4,
+    'ใต้': 5,
+  };
+
+  function extractRegionId(val) {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'number') {
+      return (val >= 0 && val <= 5) ? val : null;
+    }
+    if (typeof val === 'string') {
+      const trimmed = val.replace(/<b>|<\/b>/g, '').trim();
+      if (REGION_MAP[trimmed] !== undefined) return REGION_MAP[trimmed];
+      if (state.meta && state.meta.regions) {
+        const match = state.meta.regions.find(r => r.short_th === trimmed || r.name_th === trimmed);
+        if (match) return match.region_id;
+      }
+    }
+    if (Array.isArray(val)) {
+      for (let i = val.length - 1; i >= 0; i--) {
+        const res = extractRegionId(val[i]);
+        if (res !== null) return res;
+      }
+    }
+    return null;
+  }
+
+  let lastRegionClickTime = 0;
+  function handleRegionToggle(rid) {
+    if (rid === null || rid === undefined) return;
+    const now = Date.now();
+    if (now - lastRegionClickTime < 250) return;
+    lastRegionClickTime = now;
+    if (rid === 0) {
+      state.region = null;
+    } else {
+      state.region = state.region === rid ? null : rid;
+    }
+    updateUrl();
+    renderControlBar();
+    queueFetch();
+  }
+
   // ──────────────── Plotly Rendering & Click Handlers ────────────────
   function renderPlotly(divId, figure, isMap = false) {
     const el = document.getElementById(divId);
@@ -730,72 +751,72 @@
 
     Plotly.react(el, figure.data, figure.layout, config);
 
+    // Direct SVG click listener to catch clicks anywhere on the line path, marker, or text
+    if (divId === 'plot-trend' || divId === 'plot-hero') {
+      if (!el._lineClickAttached) {
+        el._lineClickAttached = true;
+        el.addEventListener('click', (e) => {
+          const target = e.target;
+          if (!target) return;
+          const traceEl = target.closest ? target.closest('.trace') : null;
+          if (!traceEl) return;
+
+          // Find index of traceEl in .scatterlayer
+          const allTraces = Array.from(el.querySelectorAll('.scatterlayer .trace'));
+          const traceIdx = allTraces.indexOf(traceEl);
+          if (traceIdx >= 0 && el.data && el.data[traceIdx]) {
+            const tr = el.data[traceIdx];
+            let rid = extractRegionId(tr.customdata) ?? extractRegionId(tr.name) ?? extractRegionId(tr.text);
+            if (rid !== null) {
+              handleRegionToggle(rid);
+              e.stopPropagation();
+            }
+          }
+        }, true);
+      }
+    }
+
     // Attach click event for cross-filtering
     el.on('plotly_click', (eventData) => {
       if (!eventData || !eventData.points || !eventData.points.length) return;
-      const pt = eventData.points[0];
 
       // 0. Line or Point Click in Trend (#plot-trend) or Hero (#plot-hero) -> Filter by Region
       if (divId === 'plot-trend' || divId === 'plot-hero') {
         let clickedRid = null;
-        if (typeof pt.customdata === 'number') {
-          clickedRid = pt.customdata;
-        } else if (Array.isArray(pt.customdata) && typeof pt.customdata[0] === 'number') {
-          clickedRid = pt.customdata[0];
-        } else if (Array.isArray(pt.customdata) && typeof pt.customdata[0] === 'string') {
-          const regObj = state.meta.regions.find(r => r.short_th === pt.customdata[0] || r.name_th === pt.customdata[0]);
-          if (regObj) clickedRid = regObj.region_id;
-        } else if (pt.data && pt.data.name) {
-          const regObj = state.meta.regions.find(r => r.short_th === pt.data.name || r.name_th === pt.data.name);
-          if (regObj) clickedRid = regObj.region_id;
-        } else if (pt.data && pt.data.text) {
-          const txt = (Array.isArray(pt.data.text) ? pt.data.text[0] : String(pt.data.text)).trim();
-          const regObj = state.meta.regions.find(r => r.short_th === txt || r.name_th === txt);
-          if (regObj) clickedRid = regObj.region_id;
+        for (const pt of eventData.points) {
+          clickedRid = extractRegionId(pt.customdata) ?? extractRegionId(pt.data ? pt.data.name : null) ?? extractRegionId(pt.data ? pt.data.text : null);
+          if (clickedRid !== null) break;
         }
-
         if (clickedRid !== null) {
-          if (clickedRid === 0) {
-            state.region = null;
-          } else {
-            state.region = state.region === clickedRid ? null : clickedRid;
-          }
-          updateUrl();
-          renderControlBar();
-          queueFetch();
+          handleRegionToggle(clickedRid);
           return;
         }
       }
 
+      const pt = eventData.points[0];
+
       // 0. Scatter Point Click (customdata[5] = region_id)
-      if (pt.customdata && pt.customdata.length >= 6 && typeof pt.customdata[5] === 'number') {
-        const clickedRid = pt.customdata[5];
-        state.region = state.region === clickedRid ? null : clickedRid;
-        updateUrl();
-        renderControlBar();
-        queueFetch();
-        return;
+      if (pt.customdata && pt.customdata.length >= 6) {
+        const clickedRid = extractRegionId(pt.customdata[5]);
+        if (clickedRid !== null) {
+          handleRegionToggle(clickedRid);
+          return;
+        }
       }
 
       // 1. Map Click: location = region_id
       if (pt.location !== undefined) {
         const clickedId = parseInt(pt.location, 10);
-        state.region = state.region === clickedId ? null : clickedId;
-        updateUrl();
-        renderControlBar();
-        queueFetch();
+        handleRegionToggle(clickedId);
         return;
       }
 
       // 2. Treemap Click: label contains region or ID
       if (pt.label) {
         const cleanLabel = pt.label.replace(/<b>|<\/b>/g, '').split(' · ')[0];
-        const regObj = state.meta.regions.find(r => r.short_th === cleanLabel || r.name_th === cleanLabel);
-        if (regObj) {
-          state.region = state.region === regObj.region_id ? null : regObj.region_id;
-          updateUrl();
-          renderControlBar();
-          queueFetch();
+        const rid = extractRegionId(cleanLabel);
+        if (rid !== null) {
+          handleRegionToggle(rid);
           return;
         }
       }
@@ -803,42 +824,38 @@
       // 3. Heatmap Click: pt.x = year, pt.y = region name
       if (pt.x !== undefined && pt.y !== undefined && isNaN(parseInt(pt.y, 10))) {
         const clickedYear = parseInt(pt.x, 10);
-        const regObj = state.meta.regions.find(r => r.short_th === pt.y);
         if (!isNaN(clickedYear)) state.year = clickedYear;
-        if (regObj) {
-          state.region = regObj.region_id === 0 ? null : regObj.region_id;
+        const rid = extractRegionId(pt.y);
+        if (rid !== null) {
+          handleRegionToggle(rid);
+        } else {
+          updateUrl();
+          renderControlBar();
+          queueFetch();
         }
-        updateUrl();
-        renderControlBar();
-        queueFetch();
         return;
       }
 
       // 4. Bar or Line Click in Tab 3 or Trend
       if (pt.x !== undefined) {
         const xStr = String(pt.x).replace(/<b>|<\/b>/g, '');
-        // Year click on line trend
-        const xNum = parseInt(xStr, 10);
-        if (!isNaN(xNum) && xNum >= 2554 && xNum <= 2568) {
-          state.year = xNum;
-          updateUrl();
-          renderControlBar();
-          queueFetch();
-          return;
-        }
 
         // Region bar click in CAGR
         if (xStr.includes('ภาพรวม') || xStr.includes('ทั้งประเทศ')) {
-          state.region = null;
-          updateUrl();
-          renderControlBar();
-          queueFetch();
+          handleRegionToggle(0);
           return;
         }
 
-        const regObj = state.meta.regions.find(r => r.short_th === xStr);
-        if (regObj) {
-          state.region = regObj.region_id === 0 ? null : regObj.region_id;
+        const rid = extractRegionId(xStr);
+        if (rid !== null) {
+          handleRegionToggle(rid);
+          return;
+        }
+
+        // Year click on other charts
+        const xNum = parseInt(xStr, 10);
+        if (!isNaN(xNum) && xNum >= 2554 && xNum <= 2568) {
+          state.year = xNum;
           updateUrl();
           renderControlBar();
           queueFetch();
@@ -856,6 +873,12 @@
         }
       }
     });
+  }
+
+  function renderNotes(notes) {
+    const list = document.getElementById('notes-list');
+    if (!list) return;
+    list.innerHTML = notes.map(n => `<div class="note-bullet">• ${n}</div>`).join('');
   }
 
   // ──────────────── Tab Switching ────────────────
@@ -915,13 +938,17 @@
 
     let summary = null;
     try {
-      const query = new URLSearchParams();
-      Object.entries(params).forEach(([k, v]) => {
-        if (v !== null && v !== undefined) query.set(k, v);
-      });
-      const res = await fetch(`/api/summary/${tab}/${chartId}?${query.toString()}`);
-      if (!res.ok) throw new Error('Summary fetch failed');
-      summary = await res.json();
+      if (window.DashboardEngine && typeof DashboardEngine.getSummary === 'function') {
+        summary = DashboardEngine.getSummary(tab, chartId, params);
+      } else {
+        const query = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => {
+          if (v !== null && v !== undefined) query.set(k, v);
+        });
+        const res = await fetch(`/api/summary/${tab}/${chartId}?${query.toString()}`);
+        if (!res.ok) throw new Error('Summary fetch failed');
+        summary = await res.json();
+      }
     } catch (err) {
       console.error('Failed to load summary:', err);
       return;

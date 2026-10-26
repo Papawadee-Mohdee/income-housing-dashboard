@@ -481,7 +481,8 @@
         title: { text: '' },
       },
       height: 320,
-      hovermode: 'x unified',
+      hovermode: 'closest',
+      hoverdistance: 30,
     });
 
     // ──────────────── Chart 1C: Heatmap (Urban-Rural Gap) ────────────────
@@ -1090,7 +1091,8 @@
         tickformat: ',.0f',
       },
       height: 320,
-      hovermode: 'x unified',
+      hovermode: 'closest',
+      hoverdistance: 30,
       shapes: trendShapes,
       annotations: trendAnnotations,
     });
@@ -1450,7 +1452,7 @@
         const custom = rows.map(r => {
           const diff = r.price_to_income_index - 100.0;
           const s = diff > 0 ? '+' : '';
-          return [reg.short_th, r.price_to_income_index, r.income_index, r.hpi_index, `${s}${diff.toFixed(1)}%`];
+          return [reg.short_th, r.price_to_income_index, r.income_index, r.hpi_index, `${s}${diff.toFixed(1)}%`, rid];
         });
 
         heroTraces.push({
@@ -1496,6 +1498,7 @@
       },
       height: 400,
       hovermode: 'closest',
+      hoverdistance: 30,
       shapes: heroShapes,
       annotations: heroAnnotations,
     });

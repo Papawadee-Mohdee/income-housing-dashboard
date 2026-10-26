@@ -422,7 +422,7 @@
 
   function renderTab12Charts(container, data) {
     const grid = document.createElement('div');
-    grid.className = 'charts-main-grid';
+    grid.className = 'charts-main-grid main-charts-grid';
 
     // Left Column: Choropleth Map Card
     const mapCard = document.createElement('div');
@@ -594,7 +594,7 @@
   // ──────────────── Tab 3 Charts Rendering ────────────────
   function renderTab3Charts(container, data) {
     const grid = document.createElement('div');
-    grid.className = 'tab3-charts-grid';
+    grid.className = 'tab3-charts-container tab3-charts-grid';
 
     // Chart 1: Hero Line Chart (Price-to-Income)
     const heroCard = document.createElement('div');
@@ -615,7 +615,7 @@
 
     // Row 2: 2 Columns (Gap Area and CAGR bar)
     const row2 = document.createElement('div');
-    row2.className = 'tab3-row-two';
+    row2.className = 'tab3-mid-grid tab3-row-two';
 
     // Chart 2: Affordability Gap Area
     const gapCard = document.createElement('div');
@@ -689,6 +689,54 @@
     renderPlotly('plot-scatter', scatterObj.figure, false);
   }
 
+  // ──────────────── Region Extraction & Cross-Filtering Helpers ────────────────
+  const REGION_MAP = {
+    'ทั่วประเทศ': 0,
+    'กทม.+ปริมณฑล': 1,
+    'กลาง': 2,
+    'เหนือ': 3,
+    'อีสาน': 4,
+    'ใต้': 5,
+  };
+
+  function extractRegionId(val) {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'number') {
+      return (val >= 0 && val <= 5) ? val : null;
+    }
+    if (typeof val === 'string') {
+      const trimmed = val.replace(/<b>|<\/b>/g, '').trim();
+      if (REGION_MAP[trimmed] !== undefined) return REGION_MAP[trimmed];
+      if (state.meta && state.meta.regions) {
+        const match = state.meta.regions.find(r => r.short_th === trimmed || r.name_th === trimmed);
+        if (match) return match.region_id;
+      }
+    }
+    if (Array.isArray(val)) {
+      for (let i = val.length - 1; i >= 0; i--) {
+        const res = extractRegionId(val[i]);
+        if (res !== null) return res;
+      }
+    }
+    return null;
+  }
+
+  let lastRegionClickTime = 0;
+  function handleRegionToggle(rid) {
+    if (rid === null || rid === undefined) return;
+    const now = Date.now();
+    if (now - lastRegionClickTime < 250) return;
+    lastRegionClickTime = now;
+    if (rid === 0) {
+      state.region = null;
+    } else {
+      state.region = state.region === rid ? null : rid;
+    }
+    updateUrl();
+    renderControlBar();
+    queueFetch();
+  }
+
   // ──────────────── Plotly Rendering & Click Handlers ────────────────
   function renderPlotly(divId, figure, isMap = false) {
     const el = document.getElementById(divId);
@@ -703,72 +751,72 @@
 
     Plotly.react(el, figure.data, figure.layout, config);
 
+    // Direct SVG click listener to catch clicks anywhere on the line path, marker, or text
+    if (divId === 'plot-trend' || divId === 'plot-hero') {
+      if (!el._lineClickAttached) {
+        el._lineClickAttached = true;
+        el.addEventListener('click', (e) => {
+          const target = e.target;
+          if (!target) return;
+          const traceEl = target.closest ? target.closest('.trace') : null;
+          if (!traceEl) return;
+
+          // Find index of traceEl in .scatterlayer
+          const allTraces = Array.from(el.querySelectorAll('.scatterlayer .trace'));
+          const traceIdx = allTraces.indexOf(traceEl);
+          if (traceIdx >= 0 && el.data && el.data[traceIdx]) {
+            const tr = el.data[traceIdx];
+            let rid = extractRegionId(tr.customdata) ?? extractRegionId(tr.name) ?? extractRegionId(tr.text);
+            if (rid !== null) {
+              handleRegionToggle(rid);
+              e.stopPropagation();
+            }
+          }
+        }, true);
+      }
+    }
+
     // Attach click event for cross-filtering
     el.on('plotly_click', (eventData) => {
       if (!eventData || !eventData.points || !eventData.points.length) return;
-      const pt = eventData.points[0];
 
       // 0. Line or Point Click in Trend (#plot-trend) or Hero (#plot-hero) -> Filter by Region
       if (divId === 'plot-trend' || divId === 'plot-hero') {
         let clickedRid = null;
-        if (typeof pt.customdata === 'number') {
-          clickedRid = pt.customdata;
-        } else if (Array.isArray(pt.customdata) && typeof pt.customdata[0] === 'number') {
-          clickedRid = pt.customdata[0];
-        } else if (Array.isArray(pt.customdata) && typeof pt.customdata[0] === 'string') {
-          const regObj = state.meta.regions.find(r => r.short_th === pt.customdata[0] || r.name_th === pt.customdata[0]);
-          if (regObj) clickedRid = regObj.region_id;
-        } else if (pt.data && pt.data.name) {
-          const regObj = state.meta.regions.find(r => r.short_th === pt.data.name || r.name_th === pt.data.name);
-          if (regObj) clickedRid = regObj.region_id;
-        } else if (pt.data && pt.data.text) {
-          const txt = (Array.isArray(pt.data.text) ? pt.data.text[0] : String(pt.data.text)).trim();
-          const regObj = state.meta.regions.find(r => r.short_th === txt || r.name_th === txt);
-          if (regObj) clickedRid = regObj.region_id;
+        for (const pt of eventData.points) {
+          clickedRid = extractRegionId(pt.customdata) ?? extractRegionId(pt.data ? pt.data.name : null) ?? extractRegionId(pt.data ? pt.data.text : null);
+          if (clickedRid !== null) break;
         }
-
         if (clickedRid !== null) {
-          if (clickedRid === 0) {
-            state.region = null;
-          } else {
-            state.region = state.region === clickedRid ? null : clickedRid;
-          }
-          updateUrl();
-          renderControlBar();
-          queueFetch();
+          handleRegionToggle(clickedRid);
           return;
         }
       }
 
+      const pt = eventData.points[0];
+
       // 0. Scatter Point Click (customdata[5] = region_id)
-      if (pt.customdata && pt.customdata.length >= 6 && typeof pt.customdata[5] === 'number') {
-        const clickedRid = pt.customdata[5];
-        state.region = state.region === clickedRid ? null : clickedRid;
-        updateUrl();
-        renderControlBar();
-        queueFetch();
-        return;
+      if (pt.customdata && pt.customdata.length >= 6) {
+        const clickedRid = extractRegionId(pt.customdata[5]);
+        if (clickedRid !== null) {
+          handleRegionToggle(clickedRid);
+          return;
+        }
       }
 
       // 1. Map Click: location = region_id
       if (pt.location !== undefined) {
         const clickedId = parseInt(pt.location, 10);
-        state.region = state.region === clickedId ? null : clickedId;
-        updateUrl();
-        renderControlBar();
-        queueFetch();
+        handleRegionToggle(clickedId);
         return;
       }
 
       // 2. Treemap Click: label contains region or ID
       if (pt.label) {
         const cleanLabel = pt.label.replace(/<b>|<\/b>/g, '').split(' · ')[0];
-        const regObj = state.meta.regions.find(r => r.short_th === cleanLabel || r.name_th === cleanLabel);
-        if (regObj) {
-          state.region = state.region === regObj.region_id ? null : regObj.region_id;
-          updateUrl();
-          renderControlBar();
-          queueFetch();
+        const rid = extractRegionId(cleanLabel);
+        if (rid !== null) {
+          handleRegionToggle(rid);
           return;
         }
       }
@@ -776,42 +824,38 @@
       // 3. Heatmap Click: pt.x = year, pt.y = region name
       if (pt.x !== undefined && pt.y !== undefined && isNaN(parseInt(pt.y, 10))) {
         const clickedYear = parseInt(pt.x, 10);
-        const regObj = state.meta.regions.find(r => r.short_th === pt.y);
         if (!isNaN(clickedYear)) state.year = clickedYear;
-        if (regObj) {
-          state.region = regObj.region_id === 0 ? null : regObj.region_id;
+        const rid = extractRegionId(pt.y);
+        if (rid !== null) {
+          handleRegionToggle(rid);
+        } else {
+          updateUrl();
+          renderControlBar();
+          queueFetch();
         }
-        updateUrl();
-        renderControlBar();
-        queueFetch();
         return;
       }
 
       // 4. Bar or Line Click in Tab 3 or Trend
       if (pt.x !== undefined) {
         const xStr = String(pt.x).replace(/<b>|<\/b>/g, '');
-        // Year click on line trend
-        const xNum = parseInt(xStr, 10);
-        if (!isNaN(xNum) && xNum >= 2554 && xNum <= 2568) {
-          state.year = xNum;
-          updateUrl();
-          renderControlBar();
-          queueFetch();
-          return;
-        }
 
         // Region bar click in CAGR
         if (xStr.includes('ภาพรวม') || xStr.includes('ทั้งประเทศ')) {
-          state.region = null;
-          updateUrl();
-          renderControlBar();
-          queueFetch();
+          handleRegionToggle(0);
           return;
         }
 
-        const regObj = state.meta.regions.find(r => r.short_th === xStr);
-        if (regObj) {
-          state.region = regObj.region_id === 0 ? null : regObj.region_id;
+        const rid = extractRegionId(xStr);
+        if (rid !== null) {
+          handleRegionToggle(rid);
+          return;
+        }
+
+        // Year click on other charts
+        const xNum = parseInt(xStr, 10);
+        if (!isNaN(xNum) && xNum >= 2554 && xNum <= 2568) {
+          state.year = xNum;
           updateUrl();
           renderControlBar();
           queueFetch();

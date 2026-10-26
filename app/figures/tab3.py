@@ -141,6 +141,7 @@ def fig_price_to_income_hero(
                 r["income_index"],
                 r["hpi_index"],
                 f"{sign}{diff:.1f}%",
+                rid,
             ])
 
         hovertemplate = (
@@ -195,6 +196,7 @@ def fig_price_to_income_hero(
         },
         "height": 400,
         "hovermode": "closest",
+        "hoverdistance": 30,
         "shapes": shapes,
         "annotations": annotations,
     })

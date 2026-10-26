@@ -221,7 +221,8 @@ def fig_trend(
             "title": {"text": ""},
         },
         "height": 320,
-        "hovermode": "x unified",
+        "hovermode": "closest",
+        "hoverdistance": 30,
     })
     fig.update_layout(**layout)
     return fig.to_plotly_json()

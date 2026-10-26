@@ -131,7 +131,8 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 1440px;
+  width: 100%;
+  max-width: none;
   overflow-x: hidden;
 }
 
@@ -379,20 +380,25 @@
 }
 
 /* ──────────────── Tab 3 Layout ──────────────── */
-.tab3-charts-container {
+.tab3-charts-container,
+.tab3-charts-grid {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
 }
 
-.tab3-mid-grid {
+.tab3-mid-grid,
+.tab3-row-two {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+  width: 100%;
 }
 
 @media (max-width: 960px) {
-  .tab3-mid-grid {
+  .tab3-mid-grid,
+  .tab3-row-two {
     grid-template-columns: 1fr;
   }
 }
@@ -512,14 +518,17 @@
 }
 
 /* ──────────────── Main Charts Grid (Tabs 1 & 2) ──────────────── */
-.main-charts-grid {
+.main-charts-grid,
+.charts-main-grid {
   display: grid;
   grid-template-columns: 5fr 7fr;
   gap: 20px;
+  width: 100%;
 }
 
 @media (max-width: 1200px) {
-  .main-charts-grid {
+  .main-charts-grid,
+  .charts-main-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -528,6 +537,14 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
+}
+
+.charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
 }
 
 /* Chart Card */
@@ -541,6 +558,8 @@
   flex-direction: column;
   gap: 8px;
   position: relative;
+  width: 100%;
+  min-width: 0;
 }
 
 .chart-card-full {
@@ -610,6 +629,20 @@
 .plotly-container {
   width: 100%;
   flex: 1;
+}
+
+/* Clickable lines, markers and labels */
+#plot-trend .js-line,
+#plot-trend .point,
+#plot-trend text,
+#plot-hero .js-line,
+#plot-hero .point,
+#plot-hero text,
+#plot-gap-area .js-line,
+#plot-gap-area .point,
+#plot-cagr .bars path,
+#plot-scatter .point {
+  cursor: pointer !important;
 }
 
 /* Empty Notice */
