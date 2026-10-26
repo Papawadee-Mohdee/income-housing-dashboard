@@ -136,7 +136,7 @@ def get_base_layout(theme: str = "dark") -> dict:
         "font": {
             "family": FONT_FAMILY,
             "color": t["text_muted"],
-            "size": 12.5,
+            "size": 13.5,
         },
         "xaxis": {
             "gridcolor": "rgba(0,0,0,0)",

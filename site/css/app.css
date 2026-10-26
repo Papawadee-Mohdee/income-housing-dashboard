@@ -3,7 +3,7 @@
 /* ──────────────── App Layout ──────────────── */
 .app-container {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 340px 1fr;
   min-height: 100vh;
 }
 
@@ -17,10 +17,10 @@
 .sidebar {
   background-color: var(--surface);
   border-right: 1px solid var(--border);
-  padding: 20px 16px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -53,16 +53,16 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   color: var(--text);
   text-decoration: none;
 }
 
 .brand-icon-box {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: var(--radius-icon);
   background: linear-gradient(135deg, var(--blue), var(--orange));
   display: flex;
@@ -70,7 +70,7 @@
   justify-content: center;
   color: white;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
 }
 
 .nav-menu {
@@ -84,12 +84,12 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 13px 18px;
   border-radius: var(--radius-icon);
   color: var(--text-muted);
   text-decoration: none;
   font-weight: 500;
-  font-size: 0.95rem;
+  font-size: 1rem;
   cursor: pointer;
   border: none;
   background: transparent;
@@ -110,8 +110,8 @@
 }
 
 .nav-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   stroke-width: 1.75;
   display: flex;
   align-items: center;
@@ -159,14 +159,14 @@
 }
 
 .tab-title {
-  font-size: 1.75rem;
+  font-size: 1.85rem;
   font-weight: 700;
   color: var(--text);
   line-height: 1.3;
 }
 
 .tab-status-line {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: var(--text-muted);
   font-weight: 400;
 }
@@ -178,7 +178,7 @@
 }
 
 .as-of-badge {
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   color: var(--text-muted);
   background-color: var(--surface);
   padding: 6px 14px;
@@ -210,11 +210,11 @@
 .sidebar-filters {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .sidebar-filters-title {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -226,11 +226,11 @@
 .sidebar-control-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .sidebar-control-label {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text);
   display: flex;
@@ -242,20 +242,20 @@
 .sidebar-region-chips {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 
 .sidebar-region-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 8px;
+  padding: 8px 12px;
   border-radius: var(--radius-btn);
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   cursor: pointer;
   font-weight: 500;
   transition: all var(--transition-fast);
@@ -283,8 +283,8 @@
 }
 
 .region-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
@@ -294,18 +294,18 @@
 .sidebar-year-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  gap: 6px;
 }
 
 .sidebar-year-btn {
-  padding: 5px 0;
+  padding: 7px 0;
   text-align: center;
   border-radius: var(--radius-btn);
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   cursor: pointer;
   font-weight: 500;
   transition: all var(--transition-fast);
@@ -329,7 +329,7 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 /* Select Controls in Sidebar */
@@ -338,10 +338,10 @@
   background-color: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 7px 10px;
+  padding: 9px 12px;
   border-radius: var(--radius-btn);
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -359,16 +359,16 @@
   background: transparent;
   border: 1px dashed var(--border);
   color: var(--text-muted);
-  padding: 7px 12px;
+  padding: 9px 14px;
   border-radius: var(--radius-btn);
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   transition: all var(--transition-fast);
   margin-top: 4px;
 }
@@ -427,22 +427,22 @@
   border: var(--card-border);
   box-shadow: var(--card-shadow);
   border-radius: var(--radius-card);
-  padding: 20px 24px;
+  padding: 24px 28px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   min-width: 200px;
 }
 
 .kpi-top {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .kpi-icon-box {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-icon);
   background-color: var(--surface-2);
   color: var(--blue);
@@ -452,7 +452,7 @@
 }
 
 .kpi-label {
-  font-size: 0.85rem;
+  font-size: 0.96rem;
   font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
@@ -463,24 +463,24 @@
 .kpi-value-row {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
   margin-top: 4px;
 }
 
 .kpi-value {
-  font-size: 2.1rem;
+  font-size: 2.4rem;
   font-weight: 700;
   color: var(--text);
   line-height: 1.1;
 }
 
 .kpi-unit {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
 }
 
 .kpi-subline {
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -488,17 +488,17 @@
 .kpi-delta-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-top: 4px;
 }
 
 .kpi-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.78rem;
+  gap: 6px;
+  font-size: 0.86rem;
   font-weight: 600;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: var(--radius-chip);
 }
 
@@ -574,22 +574,24 @@
 }
 
 .chart-title {
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 600;
   color: var(--text);
 }
 
 .chart-read-guide {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
   font-weight: 400;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  line-height: 1.55;
 }
 
 .chart-note {
-  font-size: 0.76rem;
+  font-size: 0.84rem;
   color: var(--text-muted);
-  margin-top: 4px;
+  margin-top: 6px;
+  line-height: 1.5;
 }
 
 /* Segmented Control Buttons */
@@ -606,9 +608,9 @@
   border: none;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-weight: 500;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: var(--radius-btn);
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -715,15 +717,15 @@ button:focus-visible, select:focus-visible, a:focus-visible {
   background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius-btn);
-  padding: 5px 12px;
-  font-size: 0.8rem;
+  padding: 6px 14px;
+  font-size: 0.88rem;
   font-weight: 500;
   font-family: inherit;
   color: var(--text-muted);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   transition: all var(--transition-fast);
   line-height: 1;
 }
@@ -745,6 +747,26 @@ button:focus-visible, select:focus-visible, a:focus-visible {
   outline-offset: 2px;
 }
 
+/* ──────────────── Notes Card ──────────────── */
+.notes-card {
+  background-color: var(--surface);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--radius-card);
+  padding: 24px 28px;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  line-height: 1.65;
+}
+
+.note-bullet {
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
 /* ──────────────── Summary Dialog Popup (§12.3) ──────────────── */
 body.dialog-open {
   overflow: hidden !important;
@@ -755,9 +777,9 @@ dialog.summary-dialog {
   background: transparent;
   padding: 0;
   margin: auto;
-  width: min(560px, 92vw);
-  max-width: 560px;
-  max-height: 80vh;
+  width: min(720px, 94vw);
+  max-width: 720px;
+  max-height: 85vh;
   box-shadow: none;
   overflow: visible;
 }
@@ -788,11 +810,11 @@ dialog.summary-dialog::backdrop {
 .summary-dialog-card {
   background-color: var(--surface);
   color: var(--text);
-  border-radius: var(--radius-card);
-  padding: 24px 28px;
+  border-radius: 28px;
+  padding: 32px 36px;
   display: flex;
   flex-direction: column;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -812,7 +834,7 @@ dialog.summary-dialog::backdrop {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .summary-dialog-header-text {
@@ -820,8 +842,8 @@ dialog.summary-dialog::backdrop {
 }
 
 .summary-dialog-title {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
   color: var(--text);
   line-height: 1.4;
 }
@@ -829,15 +851,15 @@ dialog.summary-dialog::backdrop {
 .summary-chips-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .summary-chip {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  font-size: 0.75rem;
+  padding: 4px 10px;
+  font-size: 0.85rem;
   font-weight: 500;
   background: var(--surface-2);
   color: var(--text-muted);
@@ -846,9 +868,9 @@ dialog.summary-dialog::backdrop {
 }
 
 .summary-dialog-close {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 50%;
   background: transparent;
   border: none;
@@ -874,25 +896,25 @@ dialog.summary-dialog::backdrop {
 .summary-dialog-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
   flex: 1;
 }
 
 .summary-headline {
-  font-size: 1.0625rem;
+  font-size: 1.22rem;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--text);
 }
 
 .summary-bullets {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-left: 20px;
-  font-size: 0.906rem;
+  gap: 12px;
+  padding-left: 24px;
+  font-size: 1.05rem;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.75;
   color: var(--text);
 }
 
@@ -908,21 +930,21 @@ dialog.summary-dialog::backdrop {
 
 .summary-caution {
   background: var(--surface-2);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
+  border-radius: var(--radius-icon);
+  padding: 14px 18px;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  font-size: 0.8125rem;
+  gap: 12px;
+  font-size: 0.95rem;
   color: var(--text-muted);
-  line-height: 1.5;
-  margin-top: 4px;
+  line-height: 1.6;
+  margin-top: 6px;
 }
 
 .summary-caution svg {
   color: var(--orange);
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -930,19 +952,19 @@ dialog.summary-dialog::backdrop {
 .summary-empty {
   background: var(--surface-2);
   border: 1px dashed var(--border);
-  border-radius: var(--radius-sm);
-  padding: 16px;
-  font-size: 0.875rem;
+  border-radius: var(--radius-icon);
+  padding: 24px;
+  font-size: 1.05rem;
   color: var(--text-muted);
   text-align: center;
 }
 
 .summary-dialog-footer {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
   border-top: 1px solid var(--border);
-  padding-top: 12px;
-  margin-top: 16px;
+  padding-top: 14px;
+  margin-top: 20px;
 }
 
 /* Mobile Bottom Sheet (<768px) */
@@ -959,7 +981,7 @@ dialog.summary-dialog::backdrop {
   }
   dialog.summary-dialog .summary-dialog-card {
     max-height: 85vh;
-    padding: 20px 20px 28px;
+    padding: 24px 20px 32px;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }

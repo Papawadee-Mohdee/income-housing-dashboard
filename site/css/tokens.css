@@ -62,6 +62,16 @@
   padding: 0;
 }
 
+html {
+  font-size: 17px;
+}
+
+@media (min-width: 1440px) {
+  html {
+    font-size: 18px;
+  }
+}
+
 body {
   font-family: var(--font-family);
   background: var(--bg-gradient);
