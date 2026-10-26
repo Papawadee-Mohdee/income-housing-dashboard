@@ -224,37 +224,26 @@ def fig_trend(
                 opacity=opacity,
             ))
 
-    # Dotted vertical line at Jan 2566 for monthly series
+    xaxis_config = {
+        **layout["xaxis"],
+        "type": "category",
+        "showspikes": True,
+        "spikethickness": 1,
+        "spikecolor": t["grid"],
+        "spikemode": "across",
+        "tickangle": 0,
+    }
     if is_monthly:
-        shapes.append(dict(
-            type="line",
-            x0="2566-01",
-            x1="2566-01",
-            y0=0,
-            y1=1,
-            yref="paper",
-            line=dict(dash="dot", color=t["text_muted"], width=1.5),
-        ))
-        annotations.append(dict(
-            x="2566-01",
-            y=1,
-            yref="paper",
-            text="เพิ่มข้อมูลสถาบันการเงินเฉพาะกิจ",
-            showarrow=False,
-            xanchor="right",
-            font=dict(family=FONT_FAMILY, color=t["text_muted"], size=10),
-        ))
+        years = sorted(list(set(r["year_be"] for r in data)))
+        xaxis_config.update({
+            "tickmode": "array",
+            "tickvals": [f"{y}-01" for y in years],
+            "ticktext": [str(y) for y in years],
+        })
 
     layout.update({
-        "margin": {"l": 48, "r": 60, "t": 8, "b": 28},
-        "xaxis": {
-            **layout["xaxis"],
-            "type": "category",
-            "showspikes": True,
-            "spikethickness": 1,
-            "spikecolor": t["grid"],
-            "spikemode": "across",
-        },
+        "margin": {"l": 48, "r": 60, "t": 8, "b": 32},
+        "xaxis": xaxis_config,
         "yaxis": {
             **layout["yaxis"],
             "title": {"text": ""},

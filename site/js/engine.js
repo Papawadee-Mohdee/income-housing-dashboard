@@ -1057,38 +1057,27 @@
       }
     });
 
+    const trendLayout = getBaseLayout(theme);
+    const trendXaxis = {
+      ...trendLayout.xaxis,
+      type: 'category',
+      showspikes: true,
+      spikethickness: 1,
+      spikecolor: t.grid,
+      spikemode: 'across',
+      tickangle: 0,
+    };
+
     if (isMonthly) {
-      trendShapes.push({
-        type: 'line',
-        x0: '2566-01',
-        x1: '2566-01',
-        y0: 0,
-        y1: 1,
-        yref: 'paper',
-        line: { dash: 'dot', color: t.text_muted, width: 1.5 },
-      });
-      trendAnnotations.push({
-        x: '2566-01',
-        y: 1,
-        yref: 'paper',
-        text: 'เพิ่มข้อมูลสถาบันการเงินเฉพาะกิจ',
-        showarrow: false,
-        xanchor: 'right',
-        font: { family: FONT_FAMILY, color: t.text_muted, size: 10 },
-      });
+      const years = DB.meta.hpi_years;
+      trendXaxis.tickmode = 'array';
+      trendXaxis.tickvals = years.map(y => `${y}-01`);
+      trendXaxis.ticktext = years.map(String);
     }
 
-    const trendLayout = getBaseLayout(theme);
     Object.assign(trendLayout, {
-      margin: { l: 48, r: 60, t: 8, b: 28 },
-      xaxis: {
-        ...trendLayout.xaxis,
-        type: 'category',
-        showspikes: true,
-        spikethickness: 1,
-        spikecolor: t.grid,
-        spikemode: 'across',
-      },
+      margin: { l: 48, r: 60, t: 8, b: 32 },
+      xaxis: trendXaxis,
       yaxis: {
         ...trendLayout.yaxis,
         title: { text: '' },
