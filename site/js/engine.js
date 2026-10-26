@@ -443,6 +443,7 @@
         fillcolor: theme === 'light' ? 'rgba(47, 107, 255, 0.08)' : 'rgba(91, 140, 255, 0.08)',
         opacity: opacity,
         marker: { size: 5, line: { color: t.surface, width: 2 } },
+        customdata: Array(xs.length).fill(rid),
         hovertemplate: `${reg.short_th}: ${hoverFmt}<extra></extra>`,
       });
 
@@ -452,6 +453,8 @@
           x: [xs[xs.length - 1]],
           y: [ys[ys.length - 1]],
           mode: 'text',
+          name: reg.short_th,
+          customdata: [rid],
           text: [`  ${reg.short_th}`],
           textposition: 'middle right',
           textfont: { family: FONT_FAMILY, size: 11, color: color },
@@ -1039,6 +1042,7 @@
           fillcolor: theme === 'light' ? 'rgba(255, 122, 26, 0.08)' : 'rgba(255, 138, 61, 0.08)',
           opacity: opacity,
           marker: { size: 5, line: { color: t.surface, width: 2 } },
+          customdata: Array(xs.length).fill(rid),
           hovertemplate: `${reg.short_th}: %{y:.1f}<extra></extra>`,
         });
 
@@ -1047,6 +1051,8 @@
           x: [xs[xs.length - 1]],
           y: [ys[ys.length - 1]],
           mode: 'text',
+          name: reg.short_th,
+          customdata: [rid],
           text: [`  ${reg.short_th}`],
           textposition: 'middle right',
           textfont: { family: FONT_FAMILY, size: 11, color: color },

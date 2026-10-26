@@ -588,17 +588,31 @@
     `;
     grid.appendChild(heroCard);
 
-    // Row 2: 2 Columns (CAGR bar and Gap Area)
+    // Row 2: 2 Columns (Gap Area and CAGR bar)
     const row2 = document.createElement('div');
     row2.className = 'tab3-row-two';
 
-    // Chart 2: CAGR Grouped Bar
+    // Chart 2: Affordability Gap Area
+    const gapCard = document.createElement('div');
+    gapCard.className = 'chart-card';
+    const gapObj = data.charts.gap_area;
+    gapCard.innerHTML = `
+      <div class="chart-header">
+        <h3 class="chart-title">2 · ช่องว่างความสามารถในการซื้อบ้าน (Affordability Gap)</h3>
+      </div>
+      <div class="chart-read-guide">${gapObj.read_guide || ''}</div>
+      <div class="plotly-container" id="plot-gap-area"></div>
+      <div class="chart-note">${gapObj.note || ''}</div>
+    `;
+    row2.appendChild(gapCard);
+
+    // Chart 3: CAGR Grouped Bar
     const cagrCard = document.createElement('div');
     cagrCard.className = 'chart-card';
     const cagrObj = data.charts.cagr;
     cagrCard.innerHTML = `
       <div class="chart-header">
-        <h3 class="chart-title">2 · เปรียบเทียบอัตราเติบโต (CAGR)</h3>
+        <h3 class="chart-title">3 · เปรียบเทียบอัตราเติบโต (CAGR)</h3>
         <div class="segmented-control" id="cagr-view-control">
           <button class="segmented-btn ${state.cagr_view === 'summary' ? 'active' : ''}" data-view="summary">ภาพรวม</button>
           <button class="segmented-btn ${state.cagr_view === 'by_region' ? 'active' : ''}" data-view="by_region">แยกภาค</button>
@@ -610,20 +624,6 @@
       <div class="chart-note">${cagrObj.note || ''}</div>
     `;
     row2.appendChild(cagrCard);
-
-    // Chart 3: Affordability Gap Area
-    const gapCard = document.createElement('div');
-    gapCard.className = 'chart-card';
-    const gapObj = data.charts.gap_area;
-    gapCard.innerHTML = `
-      <div class="chart-header">
-        <h3 class="chart-title">3 · ช่องว่างความสามารถในการซื้อบ้าน (Affordability Gap)</h3>
-      </div>
-      <div class="chart-read-guide">${gapObj.read_guide || ''}</div>
-      <div class="plotly-container" id="plot-gap-area"></div>
-      <div class="chart-note">${gapObj.note || ''}</div>
-    `;
-    row2.appendChild(gapCard);
 
     grid.appendChild(row2);
 
@@ -656,8 +656,8 @@
     }
 
     renderPlotly('plot-hero', heroObj.figure, false);
-    renderPlotly('plot-cagr', cagrObj.figure, false);
     renderPlotly('plot-gap-area', gapObj.figure, false);
+    renderPlotly('plot-cagr', cagrObj.figure, false);
     renderPlotly('plot-scatter', scatterObj.figure, false);
   }
 
@@ -679,6 +679,38 @@
     el.on('plotly_click', (eventData) => {
       if (!eventData || !eventData.points || !eventData.points.length) return;
       const pt = eventData.points[0];
+
+      // 0. Line or Point Click in Trend (#plot-trend) or Hero (#plot-hero) -> Filter by Region
+      if (divId === 'plot-trend' || divId === 'plot-hero') {
+        let clickedRid = null;
+        if (typeof pt.customdata === 'number') {
+          clickedRid = pt.customdata;
+        } else if (Array.isArray(pt.customdata) && typeof pt.customdata[0] === 'number') {
+          clickedRid = pt.customdata[0];
+        } else if (Array.isArray(pt.customdata) && typeof pt.customdata[0] === 'string') {
+          const regObj = state.meta.regions.find(r => r.short_th === pt.customdata[0] || r.name_th === pt.customdata[0]);
+          if (regObj) clickedRid = regObj.region_id;
+        } else if (pt.data && pt.data.name) {
+          const regObj = state.meta.regions.find(r => r.short_th === pt.data.name || r.name_th === pt.data.name);
+          if (regObj) clickedRid = regObj.region_id;
+        } else if (pt.data && pt.data.text) {
+          const txt = (Array.isArray(pt.data.text) ? pt.data.text[0] : String(pt.data.text)).trim();
+          const regObj = state.meta.regions.find(r => r.short_th === txt || r.name_th === txt);
+          if (regObj) clickedRid = regObj.region_id;
+        }
+
+        if (clickedRid !== null) {
+          if (clickedRid === 0) {
+            state.region = null;
+          } else {
+            state.region = state.region === clickedRid ? null : clickedRid;
+          }
+          updateUrl();
+          renderControlBar();
+          queueFetch();
+          return;
+        }
+      }
 
       // 0. Scatter Point Click (customdata[5] = region_id)
       if (pt.customdata && pt.customdata.length >= 6 && typeof pt.customdata[5] === 'number') {

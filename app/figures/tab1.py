@@ -185,6 +185,7 @@ def fig_trend(
             fillcolor=f"rgba(47, 107, 255, 0.08)" if theme == "light" else "rgba(91, 140, 255, 0.08)",
             opacity=opacity,
             marker=dict(size=5, line=dict(color=t["surface"], width=2)),
+            customdata=[rid] * len(xs),
             hovertemplate=f"{name}: {hover_fmt}<extra></extra>",
         )
         fig.add_trace(trace)
@@ -195,6 +196,8 @@ def fig_trend(
                 x=[xs[-1]],
                 y=[ys[-1]],
                 mode="text",
+                name=name,
+                customdata=[rid],
                 text=[f"  {name}"],
                 textposition="middle right",
                 textfont=dict(family=FONT_FAMILY, size=11, color=color),
